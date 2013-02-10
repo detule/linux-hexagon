@@ -18,7 +18,7 @@
  * 02110-1301, USA.
  */
 
-#define LOAD_OFFSET PAGE_OFFSET
+/*#define LOAD_OFFSET PAGE_OFFSET*/
 
 #include <asm-generic/vmlinux.lds.h>
 #include <asm/asm-offsets.h>	/*  Most of the kernel defines are here  */
@@ -42,7 +42,8 @@ See asm-generic/sections.h for seemingly required labels.
 
 SECTIONS
 {
-	. = PAGE_OFFSET + LOAD_ADDRESS;
+	. = 0x8da00000;
+/*	. = PAGE_OFFSET + LOAD_ADDRESS;*/
 
 	__init_begin = .;
 	HEAD_TEXT_SECTION
@@ -50,7 +51,7 @@ SECTIONS
 	PERCPU_SECTION(L1_CACHE_BYTES)
 	__init_end = .;
 
-        . = ALIGN(_PAGE_SIZE);
+    . = 0xc0000000;
 	_stext = .;
 	.text : AT(ADDR(.text) - LOAD_OFFSET) {
 		_text = .;
