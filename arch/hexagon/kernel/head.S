@@ -28,12 +28,36 @@
 
 	__INIT
 ENTRY(stext)
-	//TODO: testing code. clobbers all memory 0x8e00* to 0x8f00* and then halts
+	r0 = #0
+	ssr = r0
+	dckill
+	ickill
+	l2kill
+	isync
+	jump 1f
+	nop
 
-	r24.L = #0x0000
+.align(0x40)
+
+1:
+	r2.h = #64
+	r2.l = #0
+	s60 = r2  
+ 
+	r1 = #0
+	acc0 = r1
+	acc1 = r1
+ 
+	r0 = #66  
+	syscfg = r0
+	isync
+
+#ifdef CONFIG_HEXAGON_ARCH_V4
+1:
 	r24.H = #0x8e00
+	r24.L = #0x0000
+	r25.H = #0x8eff
 	r25.L = #0x0000
-	r26.H = #0x8eff
 	r0.H = #0xAAAA
 	r0.L = #0xBBBB
 
@@ -45,6 +69,7 @@ ENTRY(stext)
 
 1:  
 	jump 1b
+#endif
 	/*
 	 * VMM will already have set up true vector page, MMU, etc.
 	 * To set up initial kernel identity map, we have to pass
