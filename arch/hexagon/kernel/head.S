@@ -28,6 +28,24 @@
 
 	__INIT
 ENTRY(stext)
+	//TODO: testing code. clobbers all memory 0x8e00* to 0x8f00* and then halts
+
+	r24.L = #0x0000
+	r24.H = #0x8e00
+	r25.L = #0x0000
+	r26.H = #0x8f00
+	r0.H = #0xAAAA
+	r0.L = #0xBBBB
+
+
+	memw(r24) = R0
+1:
+	r24 = add(r24,#4);	
+	p0 = cmp.ltu(r24,r25)
+	if (p0) jump 1b
+
+1:  
+	jump 1b
 	/*
 	 * VMM will already have set up true vector page, MMU, etc.
 	 * To set up initial kernel identity map, we have to pass
