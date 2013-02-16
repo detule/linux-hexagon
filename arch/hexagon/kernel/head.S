@@ -39,6 +39,8 @@ ENTRY(stext)
 
 .align(0x40)
 
+//The commented out section may be good for some platform but it crashes V3
+#if 0
 1:
 	r2.h = #64
 	r2.l = #0
@@ -51,15 +53,15 @@ ENTRY(stext)
 	r0 = #66  
 	syscfg = r0
 	isync
-
-#ifdef CONFIG_HEXAGON_ARCH_V4
+#endif
+#ifdef CONFIG_HEXAGON_ARCH_V3
 1:
-	r24.H = #0x8e00
 	r24.L = #0x0000
-	r25.H = #0x8eff
+	r24.H = #0x4770 
 	r25.L = #0x0000
-	r0.H = #0xAAAA
-	r0.L = #0xBBBB
+	r25.H = #0x4780
+	r0.H = #0xCCAA
+	r0.L = #0xBBCB
 
 1:
 	memw(r24) = R0

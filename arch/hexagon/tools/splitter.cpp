@@ -35,7 +35,7 @@ int main(int argc, char** argv){
 		Elf32_Phdr *phdr = (Elf32_Phdr*)&buf[hdr->e_phoff + hdr->e_phentsize * i];
 		printf("Phdr VA: 0x%8.8X PA: 0x%8.8X\n", phdr->p_vaddr, phdr->p_paddr);
 		//Save the segments we like
-		if(phdr->p_paddr == 0x8DA00000){
+		if(phdr->p_paddr == 0x46700000){
 			psegs.push_back(phdr);
 		}
 	}

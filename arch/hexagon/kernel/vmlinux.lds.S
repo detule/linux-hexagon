@@ -42,7 +42,7 @@ See asm-generic/sections.h for seemingly required labels.
 
 SECTIONS
 {
-	. = 0x8da00000;
+	. = 0x46700000;
 /*	. = PAGE_OFFSET + LOAD_ADDRESS;*/
 
 	__init_begin = .;
