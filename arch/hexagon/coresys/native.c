@@ -84,3 +84,12 @@ long __vmcache(enum VM_CACHE_OPS op, unsigned long addr, unsigned long len)
 	}
 	return 0;
 }
+
+
+extern void my_out(const char *str, ...);
+
+void debug_error_out(uint32_t elr, uint32_t badva, uint32_t lr)
+{
+	my_out("ERROR: ELR=%08X ADDR=%08X LR=%08X\r\n", elr, badva, lr);
+}
+

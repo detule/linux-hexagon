@@ -36,6 +36,9 @@
 #include <asm/prom.h>
 #endif
 
+
+extern void my_out(const char *str, ...);
+
 char cmd_line[COMMAND_LINE_SIZE];
 static char default_command_line[COMMAND_LINE_SIZE] __initdata = CONFIG_CMDLINE;
 
@@ -55,6 +58,10 @@ void __init setup_arch(char **cmdline_p)
 {
 	char *p = &external_cmdline_buffer;
 
+	my_out("Hello from Hexagon Linux 1\r\n");
+	my_out("Hello from Hexagon Linux 2\r\n");
+
+
 	/*
 	 * These will eventually be pulled in via either some hypervisor
 	 * or devicetree description.  Hardwiring for now.
@@ -63,10 +70,11 @@ void __init setup_arch(char **cmdline_p)
 	thread_freq_mhz = 100;
 	sleep_clk_freq = 32000;
 
+	//*(volatile uint32_t*)0xA900080C |= 0x20;
 	/*
 	 * Set up event bindings to handle exceptions and interrupts.
 	 */
-	__vmsetvec(_K_VM_event_vector);
+	//__vmsetvec(_K_VM_event_vector);
 
 	/*
 	 * Simulator has a few differences from the hardware.
@@ -94,11 +102,17 @@ void __init setup_arch(char **cmdline_p)
 
 	parse_early_param();
 
+	my_out("setup_arch() 2\r\n");
+
 	setup_arch_memory();
+
+	my_out("setup_arch() 3\r\n");
 
 #ifdef CONFIG_SMP
 	smp_start_cpus();
 #endif
+
+	my_out("about to exit setup_arch()\r\n");
 }
 
 /*

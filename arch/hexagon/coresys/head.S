@@ -132,13 +132,26 @@ ENTRY(stext)
 	TLB_ENTRY_SET r0, r1, r2 // idx, lo, hi
 	
 
-// Setup debug entry
+#ifdef CONFIG_HEXAGON_ARCH_V2
+// Setup debug entry for ram console
 //
-    	LOAD32(r1, TLB_MAKE_LO(TLB_ADDR(0xA9000000), TLB_SIZE_1M, TLB_UC, TLB_RWX))
-    	LOAD32(r2, TLB_MAKE_HI(TLB_ADDR(0xA9000000), 1, 0)) // global
+    	LOAD32(r1, TLB_MAKE_LO(TLB_ADDR(0x2FF00000), TLB_SIZE_1M, TLB_UC, TLB_RWX))
+    	LOAD32(r2, TLB_MAKE_HI(TLB_ADDR(0xF8000000), 1, 0)) // global
     	r0 = #TLBUSG_DEBUG
     	TLB_ENTRY_SET r0, r1, r2 // idx, lo, hi
 
+// Setup debug entry for vibro mark
+//
+    	LOAD32(r1, TLB_MAKE_LO(TLB_ADDR(0xA9000000), TLB_SIZE_1M, TLB_UC, TLB_RWX))
+    	LOAD32(r2, TLB_MAKE_HI(TLB_ADDR(0xA9000000), 1, 0)) // global
+    	r0 = #TLBUSG_DEBUG2
+    	TLB_ENTRY_SET r0, r1, r2 // idx, lo, hi
+
+#else
+
+#error Setup debug code 
+
+#endif
 
 
 // 2. setup kernel identity map:
@@ -165,7 +178,7 @@ ENTRY(stext)
 // Enable TLB/MMU 
 //		
         r0 = syscfg
-        r0 = setbit (r0, #SSR_BIT_TLB)
+        r0 = setbit (r0, #SYSCFG_BIT_TLB)
         syscfg = r0
         isync
 
@@ -233,6 +246,7 @@ __head_s_vaddr_target:
 
 	r2 = sub(r2,r0);
 	call memset;
+
 
 // Cotulla: Test LEO bzZZzz code    
 #if 0

@@ -205,6 +205,15 @@ exc_trap:
 exc_reserved:
 exc_int:
 //    jump handle_error_exception
+// Debug error code which prints information about exception
+// 
+#if 1
+    LOAD32(r29, DebugStack)
+    r0 = elr
+    r1 = badva
+    r2 = r31
+    call debug_error_out
+#endif
     jump    .
 
 
@@ -489,6 +498,13 @@ SuperWorldData:
 L1PageTables:
     .fill (HW_THREADS * L1_PAGETABLE_SIZE), 1, 0
 
+//
+// Exceptions debug stack 
+//
+    .p2align 2     // Align to 8 bytes
+    .globl DebugStack
+DebugStack:
+    .fill (512), 1, 0
 
 
 

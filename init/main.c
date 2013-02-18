@@ -488,6 +488,9 @@ asmlinkage void __init start_kernel(void)
 	local_irq_disable();
 	early_boot_irqs_disabled = true;
 
+// Cotulla test
+//	*(volatile uint32_t*)0xA900080C |= 0x20;
+
 /*
  * Interrupts are still disabled. Do necessary setups, then
  * enable them
@@ -495,14 +498,21 @@ asmlinkage void __init start_kernel(void)
 	tick_init();
 	boot_cpu_init();
 	page_address_init();
+// works
+
 	printk(KERN_NOTICE "%s", linux_banner);
 	setup_arch(&command_line);
+
+//	*(volatile uint32_t*)0xA900080C |= 0x20;
+
 	mm_init_owner(&init_mm, &init_task);
 	mm_init_cpumask(&init_mm);
 	setup_command_line(command_line);
 	setup_nr_cpu_ids();
 	setup_per_cpu_areas();
 	smp_prepare_boot_cpu();	/* arch-specific boot-cpu hooks */
+
+//	*(volatile uint32_t*)0xA900080C |= 0x20;
 
 	build_all_zonelists(NULL, NULL);
 	page_alloc_init();
