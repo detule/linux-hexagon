@@ -94,6 +94,28 @@ ENTRY(stext)
      diag = r2   
      r10 = #46
      syscfg = r10
+ 
+     r0 = #0
+     pcyclelo = r0
+     isync
+     pcyclehi = r0
+     isync
+
+  
+     r0 = syscfg
+     r0 = setbit(r0, #6) 
+     syscfg = r0
+     r0 = setbit(r0, #5)
+     syscfg = r0
+     isync
+
+
+     r0 = ssr
+     r0 = setbit(r0, #22)
+     r0 = setbit(r0, #23)
+     ssr = r0
+     isync
+
 //////
 
 

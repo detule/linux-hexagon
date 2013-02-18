@@ -33,6 +33,10 @@
 #include <asm/timer-regs.h>
 #include <asm/hexagon_vm.h>
 
+
+extern void my_out(const char *str, ...);
+
+
 /*
  * For the clocksource we need:
  *	pcycle frequency (600MHz)
@@ -237,6 +241,7 @@ void __init time_init(void)
  * but for now we take the observed simulator jitter.
  */
 static long long fudgefactor = 350;  /* Maybe lower if kernel optimized. */
+
 
 void __udelay(unsigned long usecs)
 {

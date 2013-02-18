@@ -70,6 +70,10 @@ void __init setup_arch(char **cmdline_p)
 	thread_freq_mhz = 100;
 	sleep_clk_freq = 32000;
 
+
+	my_out("600TEST 1: %llu\r\n", __vmgettime());
+	my_out("600TEST 2: %llu\r\n", __vmgettime());
+
 	//*(volatile uint32_t*)0xA900080C |= 0x20;
 	/*
 	 * Set up event bindings to handle exceptions and interrupts.

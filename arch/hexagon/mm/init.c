@@ -308,8 +308,8 @@ void __init setup_arch_memory(void)
 	 * reserve, or kernel itself.
 	 */
 
-	free_bootmem(PFN_PHYS(bootmem_start_pfn) + bootmap_size,
-		     PFN_PHYS(bootmem_end_pfn - bootmem_start_pfn) - bootmap_size -
+	free_bootmem(PFN_PHYS(bootmem_free_pfn) + bootmap_size,
+		     PFN_PHYS(bootmem_end_pfn - bootmem_free_pfn) - bootmap_size -
 		     DMA_RESERVED_BYTES);
 
 	/*
