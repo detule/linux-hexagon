@@ -55,7 +55,7 @@ extern void my_out(const char *str, ...);
 
 // HTC TouchPad
 #define PLAT_RAM_START_PA	PHYS_OFFSET
-#define PLAT_RAM_SIZE    	(16 * 1024 * 1024)
+#define PLAT_RAM_SIZE    	(20 * 1024 * 1024)
 
 
 #endif
