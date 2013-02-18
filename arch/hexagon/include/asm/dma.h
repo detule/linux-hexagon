@@ -24,6 +24,7 @@
 #define MAX_DMA_CHANNELS 1
 #define MAX_DMA_ADDRESS  (PAGE_OFFSET)
 
+extern unsigned long hexagon_coherent_pool_start;
 extern size_t hexagon_coherent_pool_size;
 
 #endif

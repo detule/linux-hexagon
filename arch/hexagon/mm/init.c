@@ -1,6 +1,7 @@
 /*
  * Memory subsystem initialization for Hexagon
  *
+ * Copyright (c) 2013 Cotulla
  * Copyright (c) 2010-2011, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -27,13 +28,70 @@
 #include <asm/sections.h>
 #include <asm/vm_mmu.h>
 
-/*
- * Define a startpg just past the end of the kernel image and a lastpg
- * that corresponds to the end of real or simulated platform memory.
- */
-#define bootmem_startpg (PFN_UP(((unsigned long) _end) - PAGE_OFFSET))
 
-unsigned long bootmem_lastpg;  /*  Should be set by platform code  */
+extern void my_out(const char *str, ...);
+
+
+#ifndef DMA_RESERVE
+#define DMA_RESERVE		(1)
+#endif
+
+#define DMA_CHUNKSIZE		(1<<22)
+#define DMA_RESERVED_BYTES	(DMA_RESERVE * DMA_CHUNKSIZE)
+
+
+// this defines declare physical memory 
+// which can be used for Linux OS
+// Note that kernel is already loaded at the start
+//
+
+#ifdef CONFIG_HEXAGON_ARCH_V2
+
+// HTC LEO
+#define PLAT_RAM_START_PA	PHYS_OFFSET
+#define PLAT_RAM_SIZE    	(24 * 1024 * 1024)
+
+#else
+
+// HTC TouchPad
+#define PLAT_RAM_START_PA	PHYS_OFFSET
+#define PLAT_RAM_SIZE    	(16 * 1024 * 1024)
+
+
+#endif
+
+
+
+
+
+// pfn for the start of ram. start of kernel
+// like 1000 0000
+unsigned long bootmem_start_pfn;
+
+// pfn  for the end of kernel
+// like 1040 0000
+unsigned long bootmem_free_pfn;
+
+// pfn for the dma area start 
+// like 1140 0000
+unsigned long bootmem_dma_pfn;
+
+// pfn for the end of ram.
+// like 1180 0000
+unsigned long bootmem_end_pfn;
+
+// defines RAM size. can be changed by mem= cmd line
+//
+unsigned long platform_ram_size = PLAT_RAM_SIZE;
+
+
+// this variables define DMA reserved area
+//
+size_t hexagon_coherent_pool_size;
+unsigned long hexagon_coherent_pool_start;
+
+
+
 
 /*  Set as variable to limit PMD copies  */
 int max_kernel_seg = 0x303;
@@ -71,7 +129,7 @@ void __init mem_init(void)
 {
 	/*  No idea where this is actually declared.  Seems to evade LXR.  */
 	totalram_pages += free_all_bootmem();
-	num_physpages = bootmem_lastpg;	/*  seriously, what?  */
+	num_physpages = bootmem_end_pfn - bootmem_start_pfn;	/*  seriously, what?  */
 
 	printk(KERN_INFO "totalram_pages = %ld\n", totalram_pages);
 
@@ -150,15 +208,10 @@ void __init paging_init(void)
 	 * Start of high memory area.  Will probably need something more
 	 * fancy if we...  get more fancy.
 	 */
-	high_memory = (void *)((bootmem_lastpg + 1) << PAGE_SHIFT);
+	high_memory = (void *)PFN_PHYS(bootmem_end_pfn + 1);
 }
 
-#ifndef DMA_RESERVE
-#define DMA_RESERVE		(4)
-#endif
-
-#define DMA_CHUNKSIZE		(1<<22)
-#define DMA_RESERVED_BYTES	(DMA_RESERVE * DMA_CHUNKSIZE)
+  
 
 /*
  * Pick out the memory size.  We look for mem=size,
@@ -170,94 +223,93 @@ static int __init early_mem(char *p)
 	char *endp;
 
 	size = memparse(p, &endp);
-
-	bootmem_lastpg = PFN_DOWN(size);
-
+	if (size < PLAT_RAM_SIZE)	
+	{
+		platform_ram_size = size;
+	}
 	return 0;
 }
 early_param("mem", early_mem);
 
-size_t hexagon_coherent_pool_size = (size_t) (DMA_RESERVE << 22);
+
+
+
+extern pgd_t L1PageTables[PTRS_PER_PGD];
+
 
 void __init setup_arch_memory(void)
 {
-	int bootmap_size;
-	/*  XXX Todo: this probably should be cleaned up  */
-	u32 *segtable = (u32 *) &swapper_pg_dir[0];
-	u32 *segtable_end;
+	int i, dmaptestart, bootmap_size;
+	u32 numdma;
+	u32 *pte = (u32 *) &L1PageTables[0];
 
-	/*
-	 * Set up boot memory allocator
-	 *
-	 * The Gorman book also talks about these functions.
-	 * This needs to change for highmem setups.
-	 */
 
-	/* Memory size needs to be a multiple of 16M */
-	bootmem_lastpg = PFN_DOWN((bootmem_lastpg << PAGE_SHIFT) &
-		~((BIG_KERNEL_PAGE_SIZE) - 1));
-
-	/*
-	 * Reserve the top DMA_RESERVE bytes of RAM for DMA (uncached)
-	 * memory allocation
-	 */
-	bootmap_size = init_bootmem(bootmem_startpg, bootmem_lastpg -
-				    PFN_DOWN(DMA_RESERVED_BYTES));
-
-	printk(KERN_INFO "bootmem_startpg:  0x%08lx\n", bootmem_startpg);
-	printk(KERN_INFO "bootmem_lastpg:  0x%08lx\n", bootmem_lastpg);
-	printk(KERN_INFO "bootmap_size:  %d\n", bootmap_size);
-	printk(KERN_INFO "max_low_pfn:  0x%08lx\n", max_low_pfn);
-
-	/*
-	 * The default VM page tables (will be) populated with
-	 * VA=PA+PAGE_OFFSET mapping.  We go in and invalidate entries
-	 * higher than what we have memory for.
-	 */
-
-	/*  this is pointer arithmetic; each entry covers 4MB  */
-	segtable = segtable + (PAGE_OFFSET >> 22);
-
-	/*  this actually only goes to the end of the first gig  */
-	segtable_end = segtable + (1<<(30-22));
-
-	/*  Move forward to the start of empty pages  */
-	segtable += bootmem_lastpg >> (22-PAGE_SHIFT);
-
+	if (platform_ram_size < (16 * 1024 * 1024 + DMA_RESERVED_BYTES))
 	{
-	    int i;
-
-	    for (i = 1 ; i <= DMA_RESERVE ; i++)
-		segtable[-i] = ((segtable[-i] & __HVM_PTE_PGMASK_4MB)
-				| __HVM_PTE_R | __HVM_PTE_W | __HVM_PTE_X
-				| __HEXAGON_C_UNC << 6
-				| __HVM_PDE_S_4MB);
+		my_out("RAM size must be >= 16M + 4M due huge TLB mapping and DMA reserve (%X)\r\n", platform_ram_size);
+		BUG();
 	}
 
-	printk(KERN_INFO "clearing segtable from %p to %p\n", segtable,
-		segtable_end);
-	while (segtable < (segtable_end-8))
-		*(segtable++) = __HVM_PDE_S_INVALID;
-	/* stop the pointer at the device I/O 4MB page  */
+	if (DMA_RESERVED_BYTES & ((4 * 1024 * 1024) - 1))
+	{
+		my_out("DMA reserved must be equal num of 4M due TLB 4M mapping\r\n");
+		BUG();
+	}
 
-	printk(KERN_INFO "segtable = %p (should be equal to _K_io_map)\n",
-		segtable);
 
-#if 0
-	/*  Other half of the early device table from vm_init_segtable. */
-	printk(KERN_INFO "&_K_init_devicetable = 0x%08x\n",
-		(unsigned long) _K_init_devicetable-PAGE_OFFSET);
-	*segtable = ((u32) (unsigned long) _K_init_devicetable-PAGE_OFFSET) |
-		__HVM_PDE_S_4KB;
-	printk(KERN_INFO "*segtable = 0x%08x\n", *segtable);
-#endif
+	// pfn for the start of ram. start of kernel
+	// like 1000 0000
+	bootmem_start_pfn = PFN_UP(PLAT_RAM_START_PA);
+
+	// pfn  for the end of kernel
+	// like 1040 0000
+//	bootmem_free_pfn = PFN_UP(((unsigned long) _end) - PAGE_OFFSET);
+	bootmem_free_pfn = PFN_UP(__pa((unsigned long)_end));
+
+	// pfn for the end of ram.
+	// like 1180 0000
+	bootmem_end_pfn = PFN_DOWN(PLAT_RAM_START_PA + platform_ram_size);
+
+	// pfn for the end lowmem (DMA reserved area)
+	//
+	bootmem_dma_pfn = bootmem_end_pfn - PFN_DOWN(DMA_RESERVED_BYTES);
+
+
+	hexagon_coherent_pool_size  = (size_t)DMA_RESERVED_BYTES;
+	hexagon_coherent_pool_start = (PAGE_OFFSET + PFN_PHYS(bootmem_dma_pfn));
+
+	min_low_pfn = bootmem_free_pfn;
+	max_low_pfn = bootmem_dma_pfn; 
+	bootmap_size = init_bootmem_node(NODE_DATA(0), bootmem_free_pfn, bootmem_free_pfn, bootmem_dma_pfn);
+
+
+	my_out("bootmem_start_pfn:  0x%08X\n", bootmem_start_pfn);
+	my_out("bootmem_free_pfn:   0x%08X\n", bootmem_free_pfn);
+	my_out("bootmem_dma_pfn:    0x%08X\n", bootmem_dma_pfn);
+	my_out("bootmem_end_pfn:    0x%08X\n", bootmem_end_pfn);
+	my_out("bootmap_size:  %d\n", bootmap_size);
+	my_out("min_low_pfn:  0x%08X\n", min_low_pfn);
+	my_out("max_low_pfn:  0x%08X\n", max_low_pfn);
+	
+
+	numdma = DMA_RESERVED_BYTES >> 22;  // num of 4M blocks
+	dmaptestart = (hexagon_coherent_pool_start >> 22);  // start index in the page table
+	for (i = 0; i < numdma; i++)
+	{
+		pte[dmaptestart + i] = ((PFN_PHYS(bootmem_dma_pfn + i) & __HVM_PTE_PGMASK_4MB)
+				| __HVM_PTE_R | __HVM_PTE_W | __HVM_PTE_X
+				| __HEXAGON_C_UNC << 6 | __HVM_PDE_S_4MB);
+	}	
+
+	// CotullaTODO: clear some parts of page table ?
 
 	/*
 	 * Free all the memory that wasn't taken up by the bootmap, the DMA
 	 * reserve, or kernel itself.
 	 */
-	free_bootmem(PFN_PHYS(bootmem_startpg)+bootmap_size,
-		     PFN_PHYS(bootmem_lastpg - bootmem_startpg) - bootmap_size -
+
+	free_bootmem(PFN_PHYS(bootmem_start_pfn) + bootmap_size,
+		     PFN_PHYS(bootmem_end_pfn - bootmem_start_pfn) - bootmap_size -
 		     DMA_RESERVED_BYTES);
 
 	/*

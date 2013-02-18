@@ -19,6 +19,8 @@
  */
 
 #include <linux/mm.h>
+#include <linux/module.h>
+#include <linux/kallsyms.h>
 #include <asm/cacheflush.h>
 #include <asm/hexagon_vm.h>
 #include "native_defs.h"
@@ -88,8 +90,15 @@ long __vmcache(enum VM_CACHE_OPS op, unsigned long addr, unsigned long len)
 
 extern void my_out(const char *str, ...);
 
+static char symBuf1[KSYM_SYMBOL_LEN];
+static char symBuf2[KSYM_SYMBOL_LEN];
+
+
 void debug_error_out(uint32_t elr, uint32_t badva, uint32_t lr)
 {
 	my_out("ERROR: ELR=%08X ADDR=%08X LR=%08X\r\n", elr, badva, lr);
+	sprint_symbol(symBuf1, elr);
+	sprint_symbol(symBuf2, lr);
+	my_out("  ELR='%s' LR='%s'\r\n", symBuf1, symBuf2);
 }
 

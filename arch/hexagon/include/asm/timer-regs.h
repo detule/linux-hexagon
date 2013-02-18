@@ -31,9 +31,27 @@
  * release 1.1, and then it's "adjustable" and probably not defaulted.
  */
 #define RTOS_TIMER_INT		3
+
+
+#ifdef CONFIG_HEXAGON_ARCH_V2
+
+/* HTC LEO */
+#define RTOS_TIMER_REGS_ADDR	0xAB000000UL
+
+#else
+
+#error Define your timer base here
+
+#endif 
+
+
+/*
 #ifdef CONFIG_HEXAGON_COMET
 #define RTOS_TIMER_REGS_ADDR	0xAB000000UL
 #endif
+*/
+
+
 #define SLEEP_CLK_RATE		32000
 
 #endif

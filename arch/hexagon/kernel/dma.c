@@ -67,7 +67,7 @@ static void *hexagon_dma_alloc_coherent(struct device *dev, size_t size,
 			panic("Can't create %s() memory pool!", __func__);
 		else
 			gen_pool_add(coherent_pool,
-				(PAGE_OFFSET + (max_low_pfn << PAGE_SHIFT)),
+				hexagon_coherent_pool_start,
 				hexagon_coherent_pool_size, -1);
 	}
 

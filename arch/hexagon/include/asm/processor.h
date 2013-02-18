@@ -56,7 +56,13 @@ struct thread_struct {
 #define INIT_THREAD { \
 }
 
-#define cpu_relax() __vmyield()
+// Cotulla: there is no such native operation present for QDSP6 seems
+// I am replaced it according to ARM architecture to memory barrier
+// But not sure if it's useful in any way
+//
+//#define cpu_relax() __vmyield()
+#define cpu_relax()	barrier()
+
 
 /*
  * Decides where the kernel will search for a free chunk of vm space during

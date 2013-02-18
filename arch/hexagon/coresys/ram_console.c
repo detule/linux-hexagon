@@ -48,7 +48,7 @@ struct ram_console_buffer
 #define RAM_CONSOLE_SIG (0x43474244) /* DBGC */
 
 
-static volatile struct ram_console_buffer *ram_console_buffer;
+static struct ram_console_buffer *ram_console_buffer;
 static size_t ram_console_buffer_size;
 
 
