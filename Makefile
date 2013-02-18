@@ -195,6 +195,10 @@ export KBUILD_BUILDHOST := $(SUBARCH)
 ARCH		?= $(SUBARCH)
 CROSS_COMPILE	?= $(CONFIG_CROSS_COMPILE:"%"=%)
 
+# Cotulla hack
+ARCH=hexagon
+CROSS_COMPILE=/home/user/Desktop/LEO/qdsp6/hexatools/bin/qdsp6-
+
 # Architecture as present in compile.h
 UTS_MACHINE 	:= $(ARCH)
 SRCARCH 	:= $(ARCH)
