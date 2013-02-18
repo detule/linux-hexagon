@@ -1,14 +1,17 @@
 #include <elf.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include <vector>
 using namespace std;
 
+#define PHYS 0x47000000
+
 int main(int argc, char** argv){
 	vector<Elf32_Phdr*> psegs;
 
-	FILE* f = fopen("vmlinux","r");
+	FILE* f = fopen("arch/hexagon/boot/qImage","r");
 	if(!f){
 		printf("Couldn't open file\n");
 		return 0;
@@ -22,58 +25,53 @@ int main(int argc, char** argv){
 	fread(buf, sizeof(char), numbytes, f);
 	fclose(f);
 
-	Elf32_Ehdr *hdr = (Elf32_Ehdr*)buf;
-	if(buf[0] != 0x7F || buf[1] != 'E' || buf[2] != 'L' || buf[3] != 'F'){
-		printf("Bad magic\n");
-		return 0;
-	}
+	Elf32_Ehdr *hdr = (Elf32_Ehdr*)malloc(sizeof(Elf32_Ehdr));
+	memset(hdr,0,sizeof(Elf32_Ehdr));
+	char* chdr = (char*)hdr;	
+	chdr[0] = 0x7F;
+	chdr[1] = 'E';
+	chdr[2] = 'L';
+	chdr[3] = 'F';
 
-	printf("Entry 0x%8.8X, Ph %d, Sh %d\n", hdr->e_entry, hdr->e_phnum, hdr->e_shnum);
+	hdr->e_type = ET_EXEC;
+	hdr->e_machine = 164; //Hexagon
+	hdr->e_version = EV_CURRENT;
+	hdr->e_entry = PHYS;
+	hdr->e_phoff = sizeof(*hdr);
+	hdr->e_shoff = 0;
+	hdr->e_flags = 0;
+	hdr->e_ehsize = sizeof(*hdr);
+	hdr->e_phentsize = sizeof(Elf32_Phdr);
+	hdr->e_phnum = 1;
+	hdr->e_shentsize = 0;
+	hdr->e_shnum = 0;	
+	hdr->e_shstrndx = SHN_UNDEF;
 
-	int i;
-	for(i=0; i < hdr->e_phnum; i++){
-		Elf32_Phdr *phdr = (Elf32_Phdr*)&buf[hdr->e_phoff + hdr->e_phentsize * i];
-		printf("Phdr VA: 0x%8.8X PA: 0x%8.8X\n", phdr->p_vaddr, phdr->p_paddr);
-		//Save the segments we like
-		if(phdr->p_paddr == 0x46700000){
-			psegs.push_back(phdr);
-		}
-	}
-	for(i=0; i < hdr->e_shnum; i++){
-		//We like don't actually care about these
-	}
 
 	//Write out the binary segments
-	for(i=0; i < psegs.size(); i++){
-		char fname[32];
-		sprintf(fname,"q6.b%2.2d",i);
-		FILE* fbin = fopen(fname,"w");
-		Elf32_Phdr *phdr = psegs[i];
-		fwrite(buf + phdr->p_offset,1,phdr->p_memsz,fbin);
-		fclose(fbin);
-	}
+	char fname[32];
+	sprintf(fname,"q6.b00");
+	FILE* fbin = fopen(fname,"w");
+	fwrite(buf,1,numbytes,fbin);
+	fclose(fbin);
 
 	//Write out the mdt
 	FILE *fmdt = fopen("q6.mdt","w");
-	//Clear segment bs
-	hdr->e_shnum = 0;
-	hdr->e_shentsize = 0;
-	hdr->e_shoff = 0;
-	hdr->e_shstrndx = SHN_UNDEF;
-
-	hdr->e_phnum = psegs.size();
-	hdr->e_phoff = sizeof(*hdr);
 	fwrite(hdr,1,sizeof(*hdr),fmdt);
-
 	unsigned long offset = 0x1000;
-	for(i=0; i < psegs.size(); i++){
-		Elf32_Phdr *phdr = psegs[i];
-		phdr->p_offset = offset;
-		offset += phdr->p_memsz;
-		if(offset%0x1000)
-			offset += 0x1000 - offset%0x1000;
-		fwrite(phdr,1,sizeof(*phdr),fmdt);
-	}
+	Elf32_Phdr *phdr = (Elf32_Phdr*)malloc(sizeof(Elf32_Phdr));
+
+	phdr->p_type = PT_LOAD;
+	phdr->p_offset = 0x1000;
+	phdr->p_vaddr = PHYS;
+	phdr->p_paddr = PHYS;
+	phdr->p_filesz = numbytes;
+	phdr->p_memsz = numbytes;
+	phdr->p_flags = PF_X | PF_R | PF_W;
+	phdr->p_align = 0;
+
+
+	fwrite(phdr,1,sizeof(*phdr),fmdt);
 
 	fclose(fmdt);
 	return 0;

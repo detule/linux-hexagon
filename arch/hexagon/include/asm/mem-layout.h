@@ -39,7 +39,8 @@
 
 #else
 
-#error PHYS_OFFSET is missing.
+/* HP Touchpad */
+#define PHYS_OFFSET			_AC(0x47000000, UL)
 
 #endif
 
