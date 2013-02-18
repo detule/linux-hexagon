@@ -67,7 +67,7 @@ Startup tasks:
 	__HEAD
 ENTRY(stext)
 
-#ifdef CONFIG_HEXAGON_ARCH_V2
+//TODO: works for v2 and v3, what about v4?
 
      r0 = #0                  
      ssr = r0                 
@@ -94,13 +94,7 @@ ENTRY(stext)
      diag = r2   
      r10 = #46
      syscfg = r10
-
-#else
-
-#error Start up seq for V3 is missing
-
-#endif
-
+//////
 
 
 // 0. clear all 64 TLB entries to be sure no mappings 
@@ -133,15 +127,18 @@ ENTRY(stext)
 	
 
 #ifdef CONFIG_HEXAGON_ARCH_V2
-// Setup debug entry for ram console
+
+// Setup debug entry for ram console HTC LEO
 //
     	LOAD32(r1, TLB_MAKE_LO(TLB_ADDR(0x2FF00000), TLB_SIZE_1M, TLB_UC, TLB_RWX))
     	LOAD32(r2, TLB_MAKE_HI(TLB_ADDR(0xF8000000), 1, 0)) // global
     	r0 = #TLBUSG_DEBUG
     	TLB_ENTRY_SET r0, r1, r2 // idx, lo, hi
 
-// Setup debug entry for vibro mark
+
+// Setup debug entry for vibro mark  HTC LEO
 //
+
     	LOAD32(r1, TLB_MAKE_LO(TLB_ADDR(0xA9000000), TLB_SIZE_1M, TLB_UC, TLB_RWX))
     	LOAD32(r2, TLB_MAKE_HI(TLB_ADDR(0xA9000000), 1, 0)) // global
     	r0 = #TLBUSG_DEBUG2
@@ -149,10 +146,12 @@ ENTRY(stext)
 
 #else
 
-#error Setup debug code 
+    	LOAD32(r1, TLB_MAKE_LO(TLB_ADDR(0x48000000), TLB_SIZE_16M, TLB_UC, TLB_RWX))
+    	LOAD32(r2, TLB_MAKE_HI(TLB_ADDR(0x48000000), 1, 0)) // global
+    	r0 = #TLBUSG_DEBUG
+    	TLB_ENTRY_SET r0, r1, r2 // idx, lo, hi
 
 #endif
-
 
 // 2. setup kernel identity map:
 // detect current address by PC and map 1M entry
@@ -174,14 +173,12 @@ ENTRY(stext)
 	r0 = #TLBUSG_INDENTITY
 	TLB_ENTRY_SET r0, r1, r2 // idx, lo, hi
 
-
 // Enable TLB/MMU 
 //		
         r0 = syscfg
         r0 = setbit (r0, #SYSCFG_BIT_TLB)
         syscfg = r0
         isync
-
 
 	/*  Jump into virtual address range 0xC0000000+.  */
 	LOAD32(r31, __head_s_vaddr_target);
@@ -190,11 +187,9 @@ ENTRY(stext)
 	/*  Insert trippy space effects.  */
 __head_s_vaddr_target:
 
-
 	// coresys init - sw mmu init
 	//
 	call	coresys_init
-
 	
 	// remove indentify mapping here
 	//
@@ -257,6 +252,25 @@ __head_s_vaddr_target:
      r10 = or (r10, r2)
      memw(r0) = r10
      dckill
+#endif
+
+#if 0
+1:
+r24.L = #0x0000
+r24.H = #0x4801
+r25.L = #0x0000
+r25.H = #0x4890
+r0.H = #0xCCAA
+r0.L = #0xCBDF
+
+1:
+memw(r24) = R0
+r24 = add(r24,#4);
+p0 = cmp.ltu(r24,r25)
+if (p0) jump 1b
+
+1:
+jump 1b
 #endif
 
 	/* Time to make the doughnuts and drink Kefir.   */
