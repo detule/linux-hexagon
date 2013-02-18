@@ -96,8 +96,8 @@ typedef struct page *pgtable_t;
  * MIPS says they're only used during mem_init.
  * also, check if we need a PHYS_OFFSET.
  */
-#define __pa(x) ((unsigned long)(x) - PAGE_OFFSET)
-#define __va(x) ((void *)((unsigned long)(x) + PAGE_OFFSET))
+#define __pa(x) ((unsigned long)(x) - PAGE_OFFSET + PHYS_OFFSET)
+#define __va(x) ((void *)((unsigned long)(x) + PAGE_OFFSET - PHYS_OFFSET))
 
 /* The "page frame" descriptor is defined in linux/mm.h */
 struct page;
