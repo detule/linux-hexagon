@@ -54,6 +54,15 @@
 /*
  * Virtual Machine PTE Bits/Fields
  */
+
+
+#define __HVM_PTE_U_BIT  5
+#define __HVM_PTE_R_BIT  9
+#define __HVM_PTE_W_BIT  10
+#define __HVM_PTE_X_BIT  11
+#define __HVM_PTE_C_BIT  6
+
+
 #define __HVM_PTE_T		(1<<4)
 #define __HVM_PTE_U		(1<<5)
 #define	__HVM_PTE_C		(0x7<<6)

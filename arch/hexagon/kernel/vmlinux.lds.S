@@ -42,8 +42,11 @@ See asm-generic/sections.h for seemingly required labels.
 
 SECTIONS
 {
+#ifdef CONFIG_HEXAGON_ARCH_V2
+	. = PAGE_OFFSET + LOAD_ADDRESS;
+#else
 	. = 0x8da00000;
-/*	. = PAGE_OFFSET + LOAD_ADDRESS;*/
+#endif
 
 	__init_begin = .;
 	HEAD_TEXT_SECTION
@@ -51,7 +54,6 @@ SECTIONS
 	PERCPU_SECTION(L1_CACHE_BYTES)
 	__init_end = .;
 
-    . = 0xc0000000;
 	_stext = .;
 	.text : AT(ADDR(.text) - LOAD_OFFSET) {
 		_text = .;

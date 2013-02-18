@@ -31,6 +31,18 @@
 
 #define PAGE_OFFSET			_AC(0xc0000000, UL)
 
+
+#ifdef CONFIG_HEXAGON_ARCH_V2
+
+/* Cotulla, HTC LEO */
+#define PHYS_OFFSET			_AC(0x10000000, UL)
+
+#else
+
+#error PHYS_OFFSET is missing.
+
+#endif
+
 /*
  * LOAD_ADDRESS is the physical/linear address of where in memory
  * the kernel gets loaded. The 12 least significant bits must be zero (0)

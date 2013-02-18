@@ -55,6 +55,10 @@ modules.builtin
 #
 !.gitignore
 !.mailmap
+# Cotulla settings:
+/Makefile
+.gitignore
+arch/hexagon/boot/qImage
 
 #
 # Generated include files

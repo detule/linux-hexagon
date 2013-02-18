@@ -46,4 +46,23 @@ head-y := arch/hexagon/kernel/head.o
 
 core-y += arch/hexagon/kernel/ \
 	arch/hexagon/mm/ \
-	arch/hexagon/lib/
+	arch/hexagon/lib/	\
+	arch/hexagon/coresys/
+
+# Cotulla ADD for qImage
+#
+
+OBJCOPYFLAGS	:=-O binary -R .comment -S
+
+boot := arch/hexagon/boot
+MACHINE  :=
+
+all: 	qImage
+
+qImage: vmlinux
+	$(Q)$(MAKE) $(build)=$(boot) MACHINE=$(MACHINE) $(boot)/$@
+
+# We use MRPROPER_FILES and CLEAN_FILES now
+archclean:
+	$(Q)$(MAKE) $(clean)=$(boot)
+
