@@ -139,17 +139,26 @@ ENTRY(stext)
 // Setup debug entry for vibro mark  HTC LEO
 //
 
-    	LOAD32(r1, TLB_MAKE_LO(TLB_ADDR(0xA9000000), TLB_SIZE_1M, TLB_UC, TLB_RWX))
-    	LOAD32(r2, TLB_MAKE_HI(TLB_ADDR(0xA9000000), 1, 0)) // global
-    	r0 = #TLBUSG_DEBUG2
-    	TLB_ENTRY_SET r0, r1, r2 // idx, lo, hi
+			LOAD32(r1, TLB_MAKE_LO(TLB_ADDR(0xA9000000), TLB_SIZE_1M, TLB_UC, TLB_RWX))
+			LOAD32(r2, TLB_MAKE_HI(TLB_ADDR(0xA9000000), 1, 0)) // global
+			r0 = #TLBUSG_DEBUG2
+			TLB_ENTRY_SET r0, r1, r2 // idx, lo, hi
 
 #else
 
     	LOAD32(r1, TLB_MAKE_LO(TLB_ADDR(0x48000000), TLB_SIZE_16M, TLB_UC, TLB_RWX))
-    	LOAD32(r2, TLB_MAKE_HI(TLB_ADDR(0x48000000), 1, 0)) // global
+    	LOAD32(r2, TLB_MAKE_HI(TLB_ADDR(0xF8000000), 1, 0)) // global
     	r0 = #TLBUSG_DEBUG
     	TLB_ENTRY_SET r0, r1, r2 // idx, lo, hi
+
+//Debug entry for hexagon timers
+#if 0
+
+		LOAD32(r1, TLB_MAKE_LO(TLB_ADDR(0x28000000), TLB_SIZE_16M, TLB_UC, TLB_RWX))
+		LOAD32(r2, TLB_MAKE_HI(TLB_ADDR(0x28000000), 1, 0)) // global
+		r0 = #TLBUSG_DEBUG2
+		TLB_ENTRY_SET r0, r1, r2 // idx, lo, hi
+#endif
 
 #endif
 

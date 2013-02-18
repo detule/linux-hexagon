@@ -345,6 +345,7 @@ static int __init mark_bootmem(unsigned long start, unsigned long end,
 
 		if (pos < bdata->node_min_pfn ||
 		    pos >= bdata->node_low_pfn) {
+			printk("mark_bootmem pos!=start 0x%lX 0x%lX\n", pos, start);
 			BUG_ON(pos != start);
 			continue;
 		}
@@ -361,6 +362,7 @@ static int __init mark_bootmem(unsigned long start, unsigned long end,
 			return 0;
 		pos = bdata->node_low_pfn;
 	}
+	printk("mark_bootmem, max < end 0x%lX 0x%lX\n", pos, end);
 	BUG();
 }
 

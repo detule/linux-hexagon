@@ -180,6 +180,9 @@ source "kernel/Kconfig.hz"
 config GENERIC_GPIO
 	def_bool n
 
+config MYOUT_PRINTK
+	def_bool y
+
 endmenu
 
 source "init/Kconfig"

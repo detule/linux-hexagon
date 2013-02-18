@@ -124,27 +124,29 @@ static int ram_console_init(struct ram_console_buffer *buffer,  size_t buffer_si
 static int ram_console_inited = 0;
 static char strbuffer[512];
 
-
-void my_out(const char *str, ...)
+void my_out_va(const char* str, va_list va)
 {
-	va_list va;
-
 	if (ram_console_inited == 0)
 	{
 		ram_console_inited = 1;
 #ifdef CONFIG_HEXAGON_ARCH_V2
 		ram_console_init((struct ram_console_buffer *)0xF80C0000, 0x00040000);		
 #else
-
-#error Non V2 code not present
-
+		ram_console_init((struct ram_console_buffer *)0xF8000000, 0x00040000);		
 #endif
 	}
 
-	va_start(va, str);
 	vsprintf(strbuffer, str, va);
-	va_end(va);
 
 	ram_console_write(strbuffer);
 }
+
+void my_out(const char *str, ...){
+	va_list va;
+
+	va_start(va, str);
+	my_out_va(str, va);
+	va_end(va);
+}
+
 

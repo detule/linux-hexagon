@@ -40,7 +40,7 @@
 
 #else
 
-#error Define your timer base here
+#define RTOS_TIMER_REGS_ADDR	0x28800000UL
 
 #endif 
 
