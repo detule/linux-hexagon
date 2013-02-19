@@ -180,6 +180,9 @@ static unsigned long __init free_all_bootmem_core(bootmem_data_t *bdata)
 	start = bdata->node_min_pfn;
 	end = bdata->node_low_pfn;
 
+// Cotulla:
+//	printk("TESTET NODE MIN %X MAX %X\n", start, end);
+
 	bdebug("nid=%td start=%lx end=%lx\n",
 		bdata - bootmem_node_data, start, end);
 
@@ -209,6 +212,8 @@ static unsigned long __init free_all_bootmem_core(bootmem_data_t *bdata)
 		 */
 		if (IS_ALIGNED(start, BITS_PER_LONG) && vec == ~0UL) {
 			int order = ilog2(BITS_PER_LONG);
+// Cotulla
+//			printk("TESTETES2 %X %X\n", (u32)start, order);
 
 			__free_pages_bootmem(pfn_to_page(start), order);
 			count += BITS_PER_LONG;
@@ -220,6 +225,10 @@ static unsigned long __init free_all_bootmem_core(bootmem_data_t *bdata)
 			while (vec && cur != start) {
 				if (vec & 1) {
 					page = pfn_to_page(cur);
+// Cotulla
+//					printk("TESTETEST %X %X %X %X %d\n", (u32)cur, (u32)page, (u32)ARCH_PFN_OFFSET, (u32)mem_map, sizeof(struct page));
+//					while (1);
+
 					__free_pages_bootmem(page, 0);
 					count++;
 				}
@@ -571,6 +580,8 @@ find_block:
 
 		region = phys_to_virt(PFN_PHYS(bdata->node_min_pfn) +
 				start_off);
+// Cotulla:
+//		printk("clear data %d %X %X %X\n", size, bdata->node_min_pfn, start_off, region);
 		memset(region, 0, size);
 		/*
 		 * The min_count is set to 0 so that bootmem allocated blocks

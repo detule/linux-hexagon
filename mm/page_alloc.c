@@ -4526,6 +4526,10 @@ static void __init_refok alloc_node_mem_map(struct pglist_data *pgdat)
 		if (!map)
 			map = alloc_bootmem_node_nopanic(pgdat, size);
 		pgdat->node_mem_map = map + (pgdat->node_start_pfn - start);
+// Cotulla
+//		printk("ALLOC NODE MEM MAP  %X %X: %X %X : %X %X %X\n", pgdat->node_mem_map, map, pgdat->node_start_pfn, 
+//				pgdat->node_spanned_pages, start, end, size);
+
 	}
 #ifndef CONFIG_NEED_MULTIPLE_NODES
 	/*

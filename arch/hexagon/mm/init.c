@@ -48,13 +48,12 @@ extern void my_out(const char *str, ...);
 #ifdef CONFIG_HEXAGON_ARCH_V2
 
 // HTC LEO
-#define PLAT_RAM_START_PA	PHYS_OFFSET
-#define PLAT_RAM_SIZE    	(24 * 1024 * 1024)
+//#define PLAT_RAM_SIZE    	(24 * 1024 * 1024)
+#define PLAT_RAM_SIZE    	(20 * 1024 * 1024)
 
 #else
 
 // HTC TouchPad
-#define PLAT_RAM_START_PA	PHYS_OFFSET
 #define PLAT_RAM_SIZE    	(20 * 1024 * 1024)
 
 
@@ -200,9 +199,11 @@ void __init paging_init(void)
 	 *  adjust accordingly.
 	 */
 
-	zones_sizes[ZONE_NORMAL] = max_low_pfn;
+	zones_sizes[ZONE_NORMAL] = max_low_pfn - min_low_pfn;
 
-	free_area_init(zones_sizes);  /*  sets up the zonelists and mem_map  */
+	free_area_init_node(0, zones_sizes, bootmem_start_pfn, NULL);
+
+//	free_area_init(zones_sizes);  /*  sets up the zonelists and mem_map  */
 
 	/*
 	 * Start of high memory area.  Will probably need something more
@@ -259,28 +260,34 @@ void __init setup_arch_memory(void)
 
 	// pfn for the start of ram. start of kernel
 	// like 1000 0000
-	bootmem_start_pfn = PFN_UP(PLAT_RAM_START_PA);
+	bootmem_start_pfn = PFN_UP(PHYS_OFFSET);
 
 	// pfn  for the end of kernel
 	// like 1040 0000
-//	bootmem_free_pfn = PFN_UP(((unsigned long) _end) - PAGE_OFFSET);
 	bootmem_free_pfn = PFN_UP(__pa((unsigned long)_end));
 
 	// pfn for the end of ram.
 	// like 1180 0000
-	bootmem_end_pfn = PFN_DOWN(PLAT_RAM_START_PA + platform_ram_size);
+	bootmem_end_pfn = PFN_DOWN(PHYS_OFFSET + platform_ram_size);
 
 	// pfn for the end lowmem (DMA reserved area)
 	//
 	bootmem_dma_pfn = bootmem_end_pfn - PFN_DOWN(DMA_RESERVED_BYTES);
 
 
+//      Memory map: 
+//      |start-----------|free--------------|dma--------end|
+//      |     kernel     |bootmem|          |              |
+//
+
 	hexagon_coherent_pool_size  = (size_t)DMA_RESERVED_BYTES;
 	hexagon_coherent_pool_start = (PAGE_OFFSET + PFN_PHYS(bootmem_dma_pfn));
 
-	min_low_pfn = bootmem_free_pfn;
+	min_low_pfn = bootmem_start_pfn;
 	max_low_pfn = bootmem_dma_pfn; 
-	bootmap_size = init_bootmem_node(NODE_DATA(0), bootmem_free_pfn, bootmem_free_pfn, bootmem_dma_pfn);
+
+	// this includes kernel, bootmemmap, but doesn't include DMA
+	bootmap_size = init_bootmem_node(NODE_DATA(0), bootmem_free_pfn, bootmem_start_pfn, bootmem_dma_pfn);
 
 
 	my_out("bootmem_start_pfn:  0x%08X\n", bootmem_start_pfn);
@@ -308,9 +315,11 @@ void __init setup_arch_memory(void)
 	 * reserve, or kernel itself.
 	 */
 
+	// we free only available ram memory between free+bootmapsize and dma
+	// note that initial state of bootmem is reserved
+	//
 	free_bootmem(PFN_PHYS(bootmem_free_pfn) + bootmap_size,
-		     PFN_PHYS(bootmem_end_pfn - bootmem_free_pfn) - bootmap_size -
-		     DMA_RESERVED_BYTES);
+		     PFN_PHYS(bootmem_dma_pfn - bootmem_free_pfn) - bootmap_size);
 
 	/*
 	 *  The bootmem allocator seemingly just lives to feed memory

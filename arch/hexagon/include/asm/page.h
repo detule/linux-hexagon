@@ -99,6 +99,10 @@ typedef struct page *pgtable_t;
 #define __pa(x) ((unsigned long)(x) - PAGE_OFFSET + PHYS_OFFSET)
 #define __va(x) ((void *)((unsigned long)(x) + PAGE_OFFSET - PHYS_OFFSET))
 
+
+#define ARCH_PFN_OFFSET		PFN_UP(PHYS_OFFSET)
+
+
 /* The "page frame" descriptor is defined in linux/mm.h */
 struct page;
 
