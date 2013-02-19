@@ -1665,7 +1665,7 @@ EXPORT_SYMBOL(printk_emit);
  *
  * See the vsnprintf() documentation for format string extensions over C99.
  */
-#if 1
+#ifdef CONFIG_MYOUT_PRINTK
 void my_out_va(const char* str, va_list va);
 #endif
 asmlinkage int printk(const char *fmt, ...)
@@ -1682,7 +1682,7 @@ asmlinkage int printk(const char *fmt, ...)
 	}
 #endif
 	va_start(args, fmt);
-#if 1
+#ifdef CONFIG_MYOUT_PRINTK
 	my_out_va(fmt, args);
 	r=0;
 #else
