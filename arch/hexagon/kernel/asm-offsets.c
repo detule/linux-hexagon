@@ -70,6 +70,7 @@ int main(void)
 	OFFSET(_PT_ER_VMEST, pt_regs, hvmer.vmest);
 	OFFSET(_PT_ER_VMPSP, pt_regs, hvmer.vmpsp);
 	OFFSET(_PT_ER_VMBADVA, pt_regs, hvmer.vmbadva);
+	OFFSET(_PT_FLAGS, pt_regs, flags);
 	DEFINE(_PT_REGS_SIZE, sizeof(struct pt_regs));
 	BLANK();
 

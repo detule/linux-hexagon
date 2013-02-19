@@ -13,7 +13,7 @@
 // TODO: V2 values. V4 is same?
 #define SSR_BIT_IE	18
 
-
+#define SSR_BIT_USR 16
 
 // SYSCFG defines
 //

@@ -27,6 +27,7 @@
 
 #include "qdsp6_tlb.h"
 #include "tlb_usage.h"
+#include "native_defs.h"
 
 
 
@@ -201,7 +202,6 @@ exc_vectors:
 
 exc_nmi:
 exc_error:
-exc_trap:
 exc_reserved:
 exc_int:
 //    jump handle_error_exception
@@ -252,8 +252,17 @@ exc_reset:
     jump    .
 
 
+#define _R0100   0
+#define _R0302   8
+#define _R0504  16
+#define _R0706  24
+#define _R0908  32
+#define _RGOSP  40
+#define _RGSR   44
+#define _RFLAGS 48
 
-
+#define GSR_USR 31
+#define GSR_IE  30
 
 
 exc_tlbmiss_X:
@@ -264,12 +273,12 @@ exc_tlbmiss_X:
     crswap (r10, sgp)  
     { 
         r0 = p3:0         
-        memd (r10 + #0) = r1:0
+        memd (r10 + #_R0100) = r1:0
     }    
-    memd (r10 + #8) = r3:2
-    memd (r10 + #16) = r5:4
-    memd (r10 + #24) = r7:6
-//    memd (r10 + #32) = r9:8
+    memd (r10 + #_R0302) = r3:2
+    memd (r10 + #_R0504) = r5:4
+    memd (r10 + #_R0706) = r7:6
+//    memd (r10 + #_R0908) = r9:8
     r1 = elr
     jump    exc_tlb_miss_common
 
@@ -280,12 +289,12 @@ exc_tlbmiss_RW:
     crswap (r10, sgp)
     { 
         r0 = p3:0         
-        memd (r10 + #0) = r1:0
+        memd (r10 + #_R0100) = r1:0
     }
-    memd (r10 + #8) = r3:2
-    memd (r10 + #16) = r5:4
-    memd (r10 + #24) = r7:6
-//    memd (r10 + #32) = r9:8
+    memd (r10 + #_R0302) = r3:2
+    memd (r10 + #_R0504) = r5:4
+    memd (r10 + #_R0706) = r7:6
+//    memd (r10 + #_R0908) = r9:8
     r1 = badva;
 
 
@@ -462,11 +471,11 @@ exc_tlb_miss_process:
 // return code
 //
     p3:0  = r0
-    r1:0  = memd (r10 + #0)
-    r3:2  = memd (r10 + #8)
-    r5:4  = memd (r10 + #16)
-    r7:6  = memd (r10 + #24)
-//    r9:8  = memd (r10 + #32)
+    r1:0  = memd (r10 + #_R0100)
+    r3:2  = memd (r10 + #_R0302)
+    r5:4  = memd (r10 + #_R0504)
+    r7:6  = memd (r10 + #_R0706)
+//    r9:8  = memd (r10 + #_R0908)
     crswap (r10, sgp)
     rte
 
@@ -476,6 +485,112 @@ exc_tlb_miss_process:
 exc_tlb_miss_invalid:
 //    call excpt_error
     jump    .
+
+exc_trap:
+//TODO: assume this is a syscall for no particular reason
+    crswap (r10, sgp)
+    { 
+        r0 = p3:0         
+        memd (r10 + #_R0100) = r1:0
+    }
+	//Get intetterupt disabled
+	r1=ssr;
+	p0 = tstbit(r1,#SSR_BIT_IE);
+	r1=clrbit(r1,#SSR_BIT_IE);
+	ssr=r1;
+
+	//Save flags
+	memw(r10 + #_RFLAGS) = r0;
+
+
+	//set the usr mode bit and interupt enable bit in _RGSR
+	r0 = xor(r0,r0);
+	if(!p0) jump past_setbit 
+	r0 = setbit(r0,#GSR_IE)
+past_setbit:
+
+	p0 = tstbit(r1,#SSR_BIT_USR);
+	if(!p0) jump past_setbit2 
+	r0 = setbit(r0,#GSR_USR)
+past_setbit2:
+	memw(r10 + #_RGSR) = r0;
+
+	//musical chairs with stack pointer
+	r0 = memw(r10 + #_RGOSP);
+	{ r0 = r29; r29 = r0; }
+	memw(r10 + #_RGOSP) = r0;
+	
+	//Restore r0,r10
+	r1:0 = memd(r10+#_R0100);
+	crswap (r10, sgp)
+
+	jump _K_enter_trap0
+
+// ret in r0,r1,r2,r3,r4 only r31,r5 can be clobbered!
+.global coresys_getregs
+coresys_getregs:
+    crswap (r10, sgp)
+	r0 = elr;
+	r3 = badva;
+	r1 = memw(r10+#_RGOSP);
+	r2 = memw(r10+#_RGSR);
+	r4 = memw(r10+#_RFLAGS);
+	//Restore
+    crswap (r10, sgp)
+	jumpr lr
+
+// r0,r1,r2,r3,r4 arguments, all registers up to 29 safe to clobber
+.global coresys_setregs
+coresys_setregs:
+//interrupts and traps must be disabled here, this state is only valid one per core
+	crswap (r10, sgp)
+	p3:0 = r4
+	elr = r0
+	badva = r3
+	memw(r10 + #_RGSR) = r1;
+	memw(r10 + #_RGOSP) = r2;
+	//Restore
+    crswap (r10, sgp)
+	jumpr lr
+
+// r29 stack, must restore to gosp
+.global coresys_rte
+coresys_rte:
+	crswap (r10, sgp)
+	memd (r10 + #_R0100) = r1:0
+	memd (r10 + #_R0302) = r3:2
+
+	r0 = memw(r10 + #_RGOSP);
+	memw(r10 + #_RGOSP) = r29;
+	{ r0 = r29; r29 = r0; }
+
+//TODO: deal with gsr
+	r0 = p3:0
+	r1 = memw(r10 + #_RGSR);
+	r2 = ssr;
+	p0 = tstbit(r1,#GSR_USR);
+	if(!p0) jump past_set_bit3 
+	r2 = setbit(r2,#SSR_BIT_USR)
+past_set_bit3:
+	p0 = tstbit(r1,#GSR_IE);
+	if(p0) jump rte_with_ie
+	ssr=r2;
+	
+	//Restore r0,r10
+	r3:2 = memd(r10+#_R0302);
+	r1:0 = memd(r10+#_R0100);
+    crswap (r10, sgp)
+	rte
+
+rte_with_ie:
+	//TODO: no idea how interrupts can be safely enabled here
+	//Restore r0,r10
+	r3:2 = memd(r10+#_R0302);
+	r1:0 = memd(r10+#_R0100);
+    crswap (r10, sgp)
+	rte
+
+
 
 
 ////////////////////////////////////////////////////////////////////////////////

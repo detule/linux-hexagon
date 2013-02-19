@@ -67,8 +67,7 @@
 	  R14 = sa0; } \
 	{ memd(R0 + #_PT_R0706) = R7:6; \
 	  R13 = lc1; } \
-	{ memd(R0 + #_PT_R0504) = R5:4; \
-	  R12 = sa1; } \
+	{ R12 = sa1; } \
 	{ memd(R0 + #_PT_UGPGP) = R31:30; \
 	  R11 = m1; \
 	  R2.H = #HI(_THREAD_SIZE); } \
@@ -148,7 +147,9 @@
 	{ \
 		memd(R29 +#_PT_R0302) = R3:2; \
 	} \
-	trap1(#HVM_TRAP1_VMGETREGS); \
+	memd(R29 +#_PT_R0504) = R5:4; \
+	memd(R29 + #_PT_R3130) = R31:30; \
+	call coresys_getregs; \
 	{ \
 		memd(R29 + #_PT_ER_VMEL) = R1:0; \
 		R0 = R29; \
@@ -157,6 +158,9 @@
 	{ \
 		memd(R29 + #_PT_ER_VMPSP) = R3:2; \
 		R1.H = #HI(CHandler); \
+	} \
+	{ \
+		memw(R29 + #_PT_FLAGS) = R4; \
 		jump event_dispatch; \
 	}
 
@@ -166,10 +170,9 @@
  * link register
  */
 
-#define DISABLE_INTS_R0_R1 	R0 = #0; \
-	r1 = ssr ;\
-	r1 = insert (r0, #1, #SSR_BIT_IE) ;\
-	ssr = r1 \
+#define DISABLE_INTS_R0  r0 = ssr ;\
+	r0 = clrbit (r0, #SSR_BIT_IE) ;\
+	ssr = r0 \
 
 
 .text
@@ -204,7 +207,7 @@ event_dispatch:
 	 */
 return_from_syscall:
 	/*  Disable interrupts while checking TIF  */
-	DISABLE_INTS_R0_R1;
+	DISABLE_INTS_R0;
 
 	/*
 	 * Coming back from the C-world, our thread info pointer
@@ -242,19 +245,22 @@ work_notifysig:
 
 restore_all:
 	/* Disable interrupts, if they weren't already, before reg restore.  */
-	DISABLE_INTS_R0_R1;
+	DISABLE_INTS_R0;
 
 	/*  do the setregs here for VM 0.5  */
 	/*  R29 here should already be pointing at pt_regs  */
 	R1:0 = memd(R29 + #_PT_ER_VMEL);
 	R3:2 = memd(R29 + #_PT_ER_VMPSP);
-	trap1(#HVM_TRAP1_VMSETREGS);
+	R4 = memw(R29 + #_PT_FLAGS);
+
+	call coresys_setregs;
 
 	R0 = R29
 	restore_pt_regs()
 	R1:0 = memd(R29 + #_PT_R0100);
 	R29 = add(R29, #_PT_REGS_SIZE);
-	rte
+	//jump to coresys for rte
+	jump coresys_rte;
 	/* Notreached */
 
 	.globl _K_enter_genex
