@@ -40,7 +40,7 @@
 
 #else
 
-#define RTOS_TIMER_REGS_ADDR	0x28800000UL
+#define RTOS_TIMER_REGS_ADDR	0x28880000UL
 
 #endif 
 
