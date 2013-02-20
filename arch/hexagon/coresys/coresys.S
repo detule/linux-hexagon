@@ -76,7 +76,7 @@ tlb_miss_count: .word   0
 
 
 
-ENTRY(get_miss_count):
+ENTRY(get_miss_count)
     LOAD32(r0, tlb_miss_count)
     r0 = memw (r0)
     jumpr r31
@@ -97,9 +97,12 @@ handle_vmclrmap:
 
 
 ///////////////////////////////////////////////////////////////////////
+//    I N T E R R U P T     C O D E 
+///////////////////////////////////////////////////////////////////////
+
 // interrupts init
 //
-ENTRY(coresys_int_init):
+ENTRY(coresys_int_init)
     r0 = #0
     imask = r0
 
@@ -118,7 +121,7 @@ ENTRY(coresys_int_init):
 // r1 - 1 active high
 //      0 active low
 //
-ENTRY(coresys_int_setpolarity):
+ENTRY(coresys_int_setpolarity)
 
 // get bit clear mask
     r3 = #1
@@ -140,7 +143,7 @@ ENTRY(coresys_int_setpolarity):
 // r1 - 1 edge
 //      0 level
 //
-ENTRY(coresys_int_settype):
+ENTRY(coresys_int_settype)
 
 // get bit clear mask
     r3 = #1
@@ -160,7 +163,7 @@ ENTRY(coresys_int_settype):
 // r0 - interrupt number
 // r1 - mask
 //
-ENTRY(coresys_int_cfg):
+ENTRY(coresys_int_cfg)
 
     r0 = and (r0, #31) 
     r0 = sub (#31, r0)
@@ -174,7 +177,7 @@ ENTRY(coresys_int_cfg):
 
 // r0 - interrupt number
 //
-ENTRY(coresys_int_done):
+ENTRY(coresys_int_done)
 
     r0 = and (r0, #31) 
     r0 = sub (#31, r0)
@@ -188,7 +191,7 @@ ENTRY(coresys_int_done):
 
 // r0 - interrupt number
 //
-ENTRY(coresys_int_raise):
+ENTRY(coresys_int_raise)
 
     r0 = and (r0, #31) 
     r0 = sub (#31, r0)
@@ -200,14 +203,14 @@ ENTRY(coresys_int_raise):
     jumpr r31
 
 
-ENTRY(coresys_int_pending):
+ENTRY(coresys_int_pending)
     r0 = ipend
     jumpr r31
 
 
 // r0 - interrupt number
 //
-ENTRY(coresys_int_enable):
+ENTRY(coresys_int_enable)
 
     r0 = and (r0, #31) 
     r0 = sub (#31, r0)
@@ -226,7 +229,7 @@ ENTRY(coresys_int_enable):
 
 // r0 - interrupt number
 //
-ENTRY(coresys_int_disable):
+ENTRY(coresys_int_disable)
 
     r0 = and (r0, #31) 
     r0 = sub (#31, r0)
@@ -240,7 +243,7 @@ ENTRY(coresys_int_disable):
 
 // r0 - 0 disable, 1 enable
 //
-ENTRY(coresys_int_gtoggle):
+ENTRY(coresys_int_gtoggle)
    
     r1 = syscfg
     r1 = insert(r0, #1, #SYSCFG_GIE)
@@ -251,7 +254,7 @@ ENTRY(coresys_int_gtoggle):
 
 // r0 - 0 disable, 1 enable
 //
-ENTRY(coresys_int_ltoggle):
+ENTRY(coresys_int_ltoggle)
    
     r1 = ssr
     r1 = insert(r0, #1, #SSR_BIT_IE)
@@ -261,12 +264,17 @@ ENTRY(coresys_int_ltoggle):
 
 
 
+///////////////////////////////////////////////////////////////////////
+//    S W    M M U     & &    E X C E P T I O N S 
+///////////////////////////////////////////////////////////////////////
+
+
 // coresys initilization function
 // must be runned once on thread #0
 // setup exception vectors
 // init supervisor global pointer register
 //
-ENTRY(coresys_init):
+ENTRY(coresys_init)
     LOAD32(r0, exc_vectors)
     evb = r0
 
@@ -768,8 +776,9 @@ rte_with_ie:
 
 
 
-
-////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////
+//    D A T A      D E C L A R A T I O N S 
+///////////////////////////////////////////////////////////////////////
 //
 // Data area for each thread here (stored in SGP)
 // 

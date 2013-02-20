@@ -94,7 +94,7 @@ static char symBuf1[KSYM_SYMBOL_LEN];
 static char symBuf2[KSYM_SYMBOL_LEN];
 
 
-u32 get_ssr()
+u32 get_ssr(void)
 {
 	u32 val = 0;
 
@@ -124,3 +124,4 @@ void debug_intr_out(uint32_t elr, uint32_t lr)
 }
 
 
+                                  
