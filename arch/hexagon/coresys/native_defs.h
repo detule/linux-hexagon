@@ -19,5 +19,6 @@
 //
 
 #define SYSCFG_BIT_TLB	0
+#define SYSCFG_GIE	4
 
 // END OF FILE

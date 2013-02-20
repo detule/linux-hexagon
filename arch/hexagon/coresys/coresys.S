@@ -75,8 +75,7 @@ tlb_miss_count: .word   0
 
 
 
-    .globl get_miss_count
-get_miss_count:
+ENTRY(get_miss_count):
     LOAD32(r0, tlb_miss_count)
     r0 = memw (r0)
     jumpr r31
@@ -95,13 +94,178 @@ handle_vmclrmap:
     jumpr r31
 
 
+
+///////////////////////////////////////////////////////////////////////
+// interrupts init
+//
+ENTRY(coresys_int_init):
+    r0 = #0
+    imask = r0
+
+    r1 = #-1
+    iel = r1
+    iahl = r1
+    cswi (r1)
+    ciad (r1)
+    imask = r1
+    isync
+    jumpr r31
+
+
+
+// r0 - interrupt number
+// r1 - 1 active high
+//      0 active low
+//
+ENTRY(coresys_int_setpolarity):
+
+// get bit clear mask
+    r3 = #1
+    r3 = asl (r3, r0)	// r3 = 1 << intr
+    r3 = sub (#-1, r3)  // r3 = 0xFFFF FFFF - (1 << intr)
+
+// modify    
+    r2 = iahl
+    r2 = and (r2, r3)	// clear bit
+    r2 |= asl (r1, r0)	// set new value
+    iahl = r2
+
+    isync
+    jumpr r31
+
+
+
+// r0 - interrupt number
+// r1 - 1 edge
+//      0 level
+//
+ENTRY(coresys_int_settype):
+
+// get bit clear mask
+    r3 = #1
+    r3 = asl (r3, r0)	// r3 = 1 << intr
+    r3 = sub (#-1, r3)  // r3 = 0xFFFF FFFF - (1 << intr)
+
+// modify    
+    r2 = iel
+    r2 = and (r2, r3)	// clear bit
+    r2 |= asl (r1, r0)	// set new value
+    iel = r2
+
+    isync
+    jumpr r31
+
+
+// r0 - interrupt number
+// r1 - mask
+//
+ENTRY(coresys_int_cfg):
+
+    r0 = and (r0, #31) 
+    r0 = sub (#31, r0)
+	
+    r2 = asl (r0, #16)
+    r1 = or (r2, r1)
+    iassignw (r1)	
+    jumpr r31
+
+
+
+// r0 - interrupt number
+//
+ENTRY(coresys_int_done):
+
+    r0 = and (r0, #31) 
+    r0 = sub (#31, r0)
+	
+    r1 = #0 
+    r1 = setbit (r1, r0)
+
+    ciad (r1)	
+    jumpr r31
+
+
+// r0 - interrupt number
+//
+ENTRY(coresys_int_raise):
+
+    r0 = and (r0, #31) 
+    r0 = sub (#31, r0)
+	
+    r1 = #0 
+    r1 = setbit (r1, r0)
+
+    swi (r1)	
+    jumpr r31
+
+
+ENTRY(coresys_int_pending):
+    r0 = ipend
+    jumpr r31
+
+
+// r0 - interrupt number
+//
+ENTRY(coresys_int_enable):
+
+    r0 = and (r0, #31) 
+    r0 = sub (#31, r0)
+
+    r2 = imask
+    r2 = clrbit (r2, r0)
+    imask = r2
+
+    r1 = #0 
+    r1 = setbit (r1, r0)
+    ciad (r1)	
+
+    jumpr r31
+
+
+
+// r0 - interrupt number
+//
+ENTRY(coresys_int_disable):
+
+    r0 = and (r0, #31) 
+    r0 = sub (#31, r0)
+
+    r2 = imask
+    r2 = setbit (r2, r0)
+    imask = r2
+
+    jumpr r31
+
+
+// r0 - 0 disable, 1 enable
+//
+ENTRY(coresys_int_gtoggle):
+   
+    r1 = syscfg
+    r1 = insert(r0, #1, #SYSCFG_GIE)
+    syscfg = r1
+
+    jumpr r31
+
+
+// r0 - 0 disable, 1 enable
+//
+ENTRY(coresys_int_ltoggle):
+   
+    r1 = ssr
+    r1 = insert(r0, #1, #SSR_BIT_IE)
+    ssr = r1
+
+    jumpr r31
+
+
+
 // coresys initilization function
 // must be runned once on thread #0
 // setup exception vectors
 // init supervisor global pointer register
 //
-    .globl coresys_init
-coresys_init:
+ENTRY(coresys_init):
     LOAD32(r0, exc_vectors)
     evb = r0
 
@@ -203,7 +367,6 @@ exc_nmi:
 exc_error:
 exc_trap:
 exc_reserved:
-exc_int:
 //    jump handle_error_exception
 // Debug error code which prints information about exception
 // 
@@ -215,6 +378,19 @@ exc_int:
     call debug_error_out
 #endif
     jump    .
+
+
+exc_int:
+#if 1
+    // interrupt test
+    LOAD32(r29, DebugStack)
+    r0 = elr
+    r1 = r31
+    call debug_intr_out
+    jump    .
+
+#endif
+    rte
 
 
 

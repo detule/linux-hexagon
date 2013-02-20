@@ -94,6 +94,18 @@ static char symBuf1[KSYM_SYMBOL_LEN];
 static char symBuf2[KSYM_SYMBOL_LEN];
 
 
+u32 get_ssr()
+{
+	u32 val = 0;
+
+	__asm__ __volatile__(
+		"%0 = ssr;\n"
+		: "=r" (val)
+	);
+	return val;
+}
+
+
 void debug_error_out(uint32_t elr, uint32_t badva, uint32_t lr)
 {
 	my_out("ERROR: ELR=%08X ADDR=%08X LR=%08X\r\n", elr, badva, lr);
@@ -101,4 +113,14 @@ void debug_error_out(uint32_t elr, uint32_t badva, uint32_t lr)
 	sprint_symbol(symBuf2, lr);
 	my_out("  ELR='%s' LR='%s'\r\n", symBuf1, symBuf2);
 }
+
+
+void debug_intr_out(uint32_t elr, uint32_t lr)
+{
+	my_out("INTR: ELR=%08X LR=%08X SSR=%X\r\n", elr, lr, get_ssr());
+	sprint_symbol(symBuf1, elr);
+	sprint_symbol(symBuf2, lr);
+	my_out("  ELR='%s' LR='%s'\r\n", symBuf1, symBuf2);
+}
+
 

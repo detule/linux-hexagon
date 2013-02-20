@@ -120,3 +120,6 @@ ENTRY(__vmsetregs)
 ENTRY(__vmgetregs)
 	trap1(#HVM_TRAP1_VMGETREGS);
 	jumpr	R31;
+
+
+
