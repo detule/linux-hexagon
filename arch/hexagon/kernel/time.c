@@ -93,7 +93,7 @@ static int set_next_event(unsigned long delta, struct clock_event_device *evt)
 {
 	/*  Assuming the timer will be disabled when we enter here.  */
 
-	printk("set next event %X\n", delta);
+//	printk("set next event %X\n", delta);
 
 	iowrite32(1, &rtos_timer->clear);
 	iowrite32(0, &rtos_timer->clear);
@@ -170,7 +170,8 @@ void ipi_timer(void)
 static irqreturn_t timer_interrupt(int irq, void *devid)
 {
 	struct clock_event_device *ce_dev = &hexagon_clockevent_dev;
-
+	                       
+//	printk("timer interrupt\n");
 	iowrite32(0, &rtos_timer->enable);
 	ce_dev->event_handler(ce_dev);
 
@@ -237,7 +238,9 @@ void __init time_init_deferred(void)
 	setup_percpu_clockdev();
 #endif
 
-	clockevents_register_device(ce_dev);
+	clockevents_register_device(ce_dev);	
+
+	printk("[TIMER] IRQ is %d\n", ce_dev->irq);
 	setup_irq(ce_dev->irq, &rtos_timer_intdesc);
 }
 

@@ -25,6 +25,13 @@
 #include <linux/ioport.h>
 
 
+#if 1
+#define DBG(x...) printk("[INT] "x)
+#else
+#define DBG(x...) do{}while(0)
+#endif
+
+
 extern u32 coresys_int_pending(void);
 extern void coresys_int_gtoggle(int state);
 extern void coresys_int_ltoggle(int state);
@@ -46,7 +53,8 @@ static void mask_irq_num(unsigned int irq)
 
 
 static void qdsp6_irq_mask(struct irq_data *d)
-{
+{                            	
+	DBG("mask %d\n", d->irq);
 	mask_irq_num(d->irq);
 
 //	void __iomem *reg = VIC_INT_ENCLEAR0 + ((d->irq & 32) ? 4 : 0);
@@ -55,6 +63,7 @@ static void qdsp6_irq_mask(struct irq_data *d)
 
 static void qdsp6_irq_unmask(struct irq_data *d)
 {
+	DBG("unmask %d\n", d->irq);
 	coresys_int_enable(d->irq);
 
 //	void __iomem *reg = VIC_INT_ENSET0 + ((d->irq & 32) ? 4 : 0);
@@ -63,6 +72,7 @@ static void qdsp6_irq_unmask(struct irq_data *d)
 
 static void qdsp6_irq_ack(struct irq_data *d)
 {
+//	DBG("done %d\n", d->irq);
 	coresys_int_done(d->irq);
 
 //	void __iomem *reg = VIC_INT_CLEAR0 + ((d->irq & 32) ? 4 : 0);
@@ -73,8 +83,8 @@ static void qdsp6_irq_ack(struct irq_data *d)
 static int qdsp6_irq_set_type(struct irq_data *d, unsigned int flow_type)
 {
 	int vidx = (d->irq & 31);
-
-	printk("qdsp6_irq_set_type: %d %X\n", vidx, flow_type);
+	
+	DBG("set_type: %d %X\n", vidx, flow_type);
 	if (flow_type & (IRQF_TRIGGER_FALLING | IRQF_TRIGGER_LOW))
 	{   		
 		coresys_int_settype(vidx, 0);
@@ -102,6 +112,8 @@ static int qdsp6_irq_set_type(struct irq_data *d, unsigned int flow_type)
 static void qdsp6_irq_eoi(struct irq_data *d)
 {
 	int vidx = (d->irq & 31);
+
+//	DBG("eoi %d\n", d->irq);
 	coresys_int_done(vidx);
 }
 
@@ -137,7 +149,7 @@ static void qdsp6_intr_test()
 
 	printk("test 0!\n");
 
-	coresys_int_cfg(4, 0x3F);
+//	coresys_int_cfg(4, 0x3F);
 	coresys_int_cfg(3, 0x3F);
 
 	printk("test 000!\n");
@@ -146,7 +158,7 @@ static void qdsp6_intr_test()
 
 	printk("test 1!\n");
 
-	coresys_int_enable(4);
+//	coresys_int_enable(4);
 	coresys_int_enable(3);
 
 	printk("test 2!\n");
@@ -169,18 +181,22 @@ void __init init_IRQ(void)
 {
 	int irq;
 
-	printk("+init_IRQ()\n");
 
+	printk("+init_IRQ()\n");
 	coresys_int_init();
 
 	for (irq = 0; irq < HEXAGON_CPUINTS; irq++) 
 	{
-		mask_irq_num(irq);
+		mask_irq_num(irq);         	
+		coresys_int_cfg(irq, 0x3F);
+
 		irq_set_chip_and_handler(irq, &qdsp6_irq_chip, handle_fasteoi_irq);
 //		irq_set_chip_and_handler(irq, &qdsp6_irq_chip, handle_level_irq);
 //		set_irq_flags(irq, IRQF_VALID); // Do we need that?
 	}                      	
 
 //	qdsp6_intr_test();	
+	coresys_int_gtoggle(1); 
+
 	printk("-init_IRQ()\n");
 }

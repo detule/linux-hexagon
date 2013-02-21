@@ -495,6 +495,8 @@ exc_reset:
 #define _RGSR   44
 #define _RFLAGS 48
 
+#define GSR_CAUSE	0
+
 #define GSR_USR 31
 #define GSR_IE  30
 
@@ -730,36 +732,61 @@ exc_tlb_miss_invalid:
 
     jump    .
 
-#define EXCEPTION_ENTER_HEAD \
-    crswap (r10, sgp);\
-    { \
-        r0 = p3:0 ; \
-        memd (r10 + #_R0100) = r1:0; \
-    } \
-	/*Interrupts are not enabled while in EX mode*/ \
-	r1=ssr; \
-	p0 = tstbit(r1,#SSR_BIT_IE); \
-	/*Save flags*/ \
-	memw(r10 + #_RFLAGS) = r0; \
-\
-	/*set the usr mode bit and interupt enable bit in _RGSR */ \
-	r0 = #0; \
-	if(!p0) jump 1f; \
-	r0 = setbit(r0,#GSR_IE); \
-1: \
-	p0 = tstbit(r1,#SSR_BIT_USR); \
-	r1 = r29; \
-	if(!p0) jump 1f;\
-		/*If usermode switch to kernel stack, else borrow stack in r29*/ \
-		r1 = memw(r10 + #_RGOSP);\
-		{ r1 = r29; r29 = r1; }\
-		r0 = setbit(r0,#GSR_USR);\
-1:\
-	memw(r10 + #_RGOSP) = r1; \
-	memw(r10 + #_RGSR) = r0;\
-	/*Restore r0,r10*/ \
-	r1:0 = memd(r10+#_R0100); \
+
+
+
+    .macro EXCEPTION_ENTER_HEAD 
+        crswap (r10, sgp);
+        { 
+           r0 = p3:0 ; 
+           memd (r10 + #_R0100) = r1:0; 
+        } 
+	/*Interrupts are not enabled while in EX mode*/ 
+	/*Save flags*/ 
+	memw(r10 + #_RFLAGS) = r0; 
+	
+	/*set the usr mode bit and interupt enable bit in _RGSR */ 
+	r0 = #0; // r0 holds GSR
+
+#if 1
+	// langpoo's way is one way
+	r1 = ssr; 
+	r1 = extractu (r1, #1, #SSR_BIT_IE)
+	r0 = insert (r1, #1, #GSR_IE)
+	                       	
+	/* low 8 bits is cause field */
+	r1 = ssr
+	r1 = extractu (r1, #8, #SSR_BIT_CAUSE)
+	r0 = insert (r1, #16, #GSR_CAUSE) // HVM_VMEST_CAUSE_MSK = 0xFFFF
+
+#else         	
+	// but jonpry's classic way is here!
+	r1 = ssr
+	p0 = tstbit(r1, #SSR_BIT_IE)
+	if (!p0) jump 1f
+		r0 = setbit(r0, #GSR_IE)
+1:
+	
+#endif	
+	r1 = ssr
+	p0 = tstbit(r1,#SSR_BIT_USR); 
+	r1 = r29; 
+	if(!p0) jump 1f;
+
+		/*If usermode switch to kernel stack, else borrow stack in r29*/ 
+		r1 = memw(r10 + #_RGOSP);
+		{ r1 = r29; r29 = r1; }
+		r0 = setbit(r0,#GSR_USR);
+1:
+	memw(r10 + #_RGOSP) = r1; 
+	memw(r10 + #_RGSR) = r0;
+
+	/*Restore r0,r10*/ 
+	r1:0 = memd(r10+#_R0100); 
 	crswap (r10, sgp)
+    .endm
+
+
 
 exc_int:
  	EXCEPTION_ENTER_HEAD;

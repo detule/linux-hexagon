@@ -30,17 +30,16 @@
  * 8x50 HDD Specs 5-8.  Simulator co-sim not fixed until
  * release 1.1, and then it's "adjustable" and probably not defaulted.
  */
-#define RTOS_TIMER_INT		3
-
-
 #ifdef CONFIG_HEXAGON_ARCH_V2
 
 /* HTC LEO */
 #define RTOS_TIMER_REGS_ADDR	0xAB000000UL
+#define RTOS_TIMER_INT		3
 
 #else
 
 #define RTOS_TIMER_REGS_ADDR	0x28880000UL
+#define RTOS_TIMER_INT		2
 
 #endif 
 

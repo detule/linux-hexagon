@@ -183,7 +183,24 @@
 
 event_dispatch:
 	save_pt_regs()
+
+	// disable interrupts and exception mode
+	// before calling exception handler
+	r3 = ssr
+	r3 = clrbit(r3, #SSR_BIT_IE)
+	r3 = clrbit(r3, #SSR_BIT_EXC)
+	ssr = r3
+	isync
+
 	callr	r1
+
+	// enable exception mode.
+	// note interrupt will be reenabled 
+	// according to GSR_IE state
+	r3 = ssr
+	r3 = setbit(r3, #SSR_BIT_EXC)
+	ssr = r3
+	isync
 
 	/*
 	 * If we were in kernel mode, we don't need to check scheduler
