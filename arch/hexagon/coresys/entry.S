@@ -47,7 +47,6 @@
  */
 
 #define save_pt_regs()\
-	memd(R0 + #_PT_R3130) = R31:30; \
 	{ memw(R0 + #_PT_R2928) = R28; \
 	  R31 = memw(R0 + #_PT_ER_VMPSP); }\
 	{ memw(R0 + #(_PT_R2928 + 4)) = R31; \
@@ -259,6 +258,7 @@ restore_all:
 	restore_pt_regs()
 	R1:0 = memd(R29 + #_PT_R0100);
 	R29 = add(R29, #_PT_REGS_SIZE);
+
 	//jump to coresys for rte
 	jump coresys_rte;
 	/* Notreached */

@@ -380,26 +380,12 @@ exc_reserved:
 // 
 #if 1
     LOAD32(r29, DebugStack)
-    r0 = elr
+    r0 = r8
     r1 = badva
     r2 = r31
     call debug_error_out
 #endif
     jump    .
-
-
-exc_int:
-#if 1
-    // interrupt test
-    LOAD32(r29, DebugStack)
-    r0 = elr
-    r1 = r31
-    call debug_intr_out
-    jump    .
-
-#endif
-    rte
-
 
 
 // called when HW thread core started by start (r0) command
@@ -430,7 +416,10 @@ exc_reset:
 
     LOAD32(r5, SuperWorldData)
     r5 = add (r5, r4)
-    sgp = r5          
+    sgp = r5    
+
+	r5 = #0
+	chicken = r5;      
 
 //    call    thread_start
     jump    .
@@ -462,7 +451,7 @@ exc_tlbmiss_X:
     memd (r10 + #_R0302) = r3:2
     memd (r10 + #_R0504) = r5:4
     memd (r10 + #_R0706) = r7:6
-//    memd (r10 + #_R0908) = r9:8
+    memd (r10 + #_R0908) = r9:8
     r1 = elr
     jump    exc_tlb_miss_common
 
@@ -478,7 +467,7 @@ exc_tlbmiss_RW:
     memd (r10 + #_R0302) = r3:2
     memd (r10 + #_R0504) = r5:4
     memd (r10 + #_R0706) = r7:6
-//    memd (r10 + #_R0908) = r9:8
+    memd (r10 + #_R0908) = r9:8
     r1 = badva;
 
 
@@ -487,7 +476,7 @@ exc_tlbmiss_RW:
 // r1 is fault address
 //
 exc_tlb_miss_common:
-
+	r8 = elr
 
 // Process statistic
 //
@@ -659,7 +648,7 @@ exc_tlb_miss_process:
     r3:2  = memd (r10 + #_R0302)
     r5:4  = memd (r10 + #_R0504)
     r7:6  = memd (r10 + #_R0706)
-//    r9:8  = memd (r10 + #_R0908)
+    r9:8  = memd (r10 + #_R0908)
     crswap (r10, sgp)
     rte
 
@@ -670,33 +659,59 @@ exc_tlb_miss_invalid:
 //    call excpt_error
     jump    .
 
+#define EXCEPTION_ENTER_HEAD \
+    crswap (r10, sgp);\
+    { \
+        r0 = p3:0 ; \
+        memd (r10 + #_R0100) = r1:0; \
+    } \
+	/*Interrupts are not enabled while in EX mode*/ \
+	r1=ssr; \
+	p0 = tstbit(r1,#SSR_BIT_IE); \
+	/*Save flags*/ \
+	memw(r10 + #_RFLAGS) = r0; \
+\
+	/*set the usr mode bit and interupt enable bit in _RGSR */ \
+	r0 = #0; \
+	if(!p0) jump 1f; \
+	r0 = setbit(r0,#GSR_IE); \
+1: \
+	p0 = tstbit(r1,#SSR_BIT_USR); \
+
+
+exc_int:
+ 	EXCEPTION_ENTER_HEAD;
+	if(!p0) jump 1f 
+		//If usermode switch to kernel stack, else borrow stack in r29
+		r1 = memw(r10 + #_RGOSP);
+		{ r1 = r29; r29 = r1; }
+		memw(r10 + #_RGOSP) = r1; 
+		r0 = setbit(r0,#GSR_USR)
+1:
+	memw(r10 + #_RGSR) = r0;
+	
+	//Restore r0,r10
+	r1:0 = memd(r10+#_R0100);
+	crswap (r10, sgp)
+
+	jump _K_enter_interrupt
+
+.global int_debug
+int_debug:
+    LOAD32(r29, DebugStack)
+    call debug_intr_out
+    jump  .
+
 exc_trap:
-//TODO: assume this is a syscall for no particular reason
-    crswap (r10, sgp)
-    { 
-        r0 = p3:0         
-        memd (r10 + #_R0100) = r1:0
-    }
-	//Get intetterupt disabled
-	r1=ssr;
-	p0 = tstbit(r1,#SSR_BIT_IE);
-	r1=clrbit(r1,#SSR_BIT_IE);
-	ssr=r1;
-
-	//Save flags
-	memw(r10 + #_RFLAGS) = r0;
-
-
-	//set the usr mode bit and interupt enable bit in _RGSR
-	r0 = xor(r0,r0);
-	if(!p0) jump past_setbit 
+	EXCEPTION_ENTER_HEAD;
+	if(!p0) jump 1f
 	r0 = setbit(r0,#GSR_IE)
-past_setbit:
+1:
 
 	p0 = tstbit(r1,#SSR_BIT_USR);
-	if(!p0) jump past_setbit2 
+	if(!p0) jump 1f 
 	r0 = setbit(r0,#GSR_USR)
-past_setbit2:
+1:
 	memw(r10 + #_RGSR) = r0;
 
 	//musical chairs with stack pointer
@@ -715,9 +730,9 @@ past_setbit2:
 coresys_getregs:
     crswap (r10, sgp)
 	r0 = elr;
+	r1 = memw(r10+#_RGSR);
+	r2 = memw(r10+#_RGOSP);
 	r3 = badva;
-	r1 = memw(r10+#_RGOSP);
-	r2 = memw(r10+#_RGSR);
 	r4 = memw(r10+#_RFLAGS);
 	//Restore
     crswap (r10, sgp)
@@ -728,11 +743,12 @@ coresys_getregs:
 coresys_setregs:
 //interrupts and traps must be disabled here, this state is only valid one per core
 	crswap (r10, sgp)
-	p3:0 = r4
 	elr = r0
-	badva = r3
 	memw(r10 + #_RGSR) = r1;
 	memw(r10 + #_RGOSP) = r2;
+	badva = r3
+	memw(r10 + #_RFLAGS) = r4;
+
 	//Restore
     crswap (r10, sgp)
 	jumpr lr
@@ -744,37 +760,37 @@ coresys_rte:
 	memd (r10 + #_R0100) = r1:0
 	memd (r10 + #_R0302) = r3:2
 
-	r0 = memw(r10 + #_RGOSP);
-	memw(r10 + #_RGOSP) = r29;
-	{ r0 = r29; r29 = r0; }
+//TODO: do this unless this is a kmode interrupt return
+//	r0 = memw(r10 + #_RGOSP);
+//	memw(r10 + #_RGOSP) = r29;
+//	{ r0 = r29; r29 = r0; }
 
-//TODO: deal with gsr
+//deal with gsr
+//TODO: needs to be optimized and actually work so bits can be cleared
 	r0 = p3:0
 	r1 = memw(r10 + #_RGSR);
 	r2 = ssr;
 	p0 = tstbit(r1,#GSR_USR);
-	if(!p0) jump past_set_bit3 
+	if(!p0) jump 1f 
 	r2 = setbit(r2,#SSR_BIT_USR)
-past_set_bit3:
+1:
 	p0 = tstbit(r1,#GSR_IE);
-	if(p0) jump rte_with_ie
+	if(!p0) jump 1f
+	r2 = setbit(r2,#SSR_BIT_IE)
+1:
 	ssr=r2;
 	
-	//Restore r0,r10
+	//Restore r0,r10,flags
+	r0 = memw(r10+#_RFLAGS);
+	p3:0 = r0
 	r3:2 = memd(r10+#_R0302);
 	r1:0 = memd(r10+#_R0100);
     crswap (r10, sgp)
 	rte
 
-rte_with_ie:
-	//TODO: no idea how interrupts can be safely enabled here
-	//Restore r0,r10
-	r3:2 = memd(r10+#_R0302);
-	r1:0 = memd(r10+#_R0100);
-    crswap (r10, sgp)
-	rte
-
-
+.global foo
+foo:
+	jumpr r31
 
 ///////////////////////////////////////////////////////////////////////
 //    D A T A      D E C L A R A T I O N S 
