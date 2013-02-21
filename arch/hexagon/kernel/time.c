@@ -172,6 +172,8 @@ static irqreturn_t timer_interrupt(int irq, void *devid)
 	struct clock_event_device *ce_dev = &hexagon_clockevent_dev;
 	                       
 //	printk("timer interrupt\n");
+//	dump_stack();
+
 	iowrite32(0, &rtos_timer->enable);
 	ce_dev->event_handler(ce_dev);
 
@@ -215,8 +217,7 @@ void __init time_init_deferred(void)
 	printk("timer test1: %08X COUNT=%08X\n", rtos_timer, ioread32(&rtos_timer->count));
 	printk("timer test2: %08X COUNT=%08X\n", rtos_timer, ioread32(&rtos_timer->count));
 	printk("tlbmiss2 %d\n", get_miss_count());
-	
-	
+
 
 	if (!rtos_timer) {
 		release_mem_region(resource->start, resource_size(resource));

@@ -319,6 +319,8 @@ static void cache_error(struct pt_regs *regs)
  */
 void do_genex(struct pt_regs *regs)
 {
+	printk("FAULT LR=%08X ELR=%08X CAUSE=%08X\n", regs->r31, pt_elr(regs), pt_cause(regs));
+
 	/*
 	 * Decode Cause and Dispatch
 	 */

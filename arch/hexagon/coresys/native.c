@@ -136,7 +136,7 @@ void debug_tlb_miss_fetch(void)
 
 void debug_error_out(uint32_t elr, uint32_t badva, uint32_t lr)
 {
-	my_out("ERROR: ELR=%08X ADDR=%08X LR=%08X\r\n", elr, badva, lr);	
+	my_out("ERROR: SSR=%X ELR=%08X ADDR=%08X LR=%08X\r\n", get_ssr(), elr, badva, lr);	
 	my_out("swapper entry %08X\n", swapper_pg_dir[badva >> 22]);
 
 	debug_dump_tlb(TLBUSG_L1FETCH);
@@ -160,7 +160,7 @@ void debug_intr_out(uint32_t elr, uint32_t lr)
 //void debug_tlbmiss_invalid(uint32_t elr, uint32_t badva, uint32_t lr)
 void debug_tlbmiss_invalid(uint32_t elr, uint32_t badva, uint32_t lr, u32 indx, u32 tid)
 {
-	my_out("ERROR TLBMISS %d: ELR=%08X ADDR=%08X LR=%08X %X %X\r\n", get_miss_count(), elr, badva, lr, indx, tid);	
+	my_out("ERROR TLBMISS %d: SSR=%X ELR=%08X ADDR=%08X LR=%08X %X %X\r\n", get_miss_count(), get_ssr(), elr, badva, lr, indx, tid);	
 	my_out("swapper entry  %08X\n", swapper_pg_dir[badva >> 22]);
 	my_out("swapper entry2 %08X\n", ((u32*)0xF0000000)[badva >> 22]);
 	my_out("swapper entry3 %08X\n", ((u32*)0xF0100000)[(badva >> 12) & 0x3FF]);
@@ -170,7 +170,7 @@ void debug_tlbmiss_invalid(uint32_t elr, uint32_t badva, uint32_t lr, u32 indx, 
 	debug_dump_tlb(TLBUSG_REPLACE_MIN);
 	debug_dump_tlb(TLBUSG_REPLACE_MIN + 1);
 	
-#if 0
+#if 1
 	sprint_symbol(symBuf1, elr);
 	sprint_symbol(symBuf2, lr);
 	my_out("  ELR='%s' LR='%s'\r\n", symBuf1, symBuf2);

@@ -88,10 +88,38 @@ void dummy_handler(struct pt_regs *regs)
 }
 
 
+#include <linux/module.h>
+#include <linux/kallsyms.h>
+
+
+// Cotulla: this dumps execution place every N seconds
+// useful for debugging halts
+//
+#define ENABLE_DUMP_CODE_FLOW	1
+
+#ifdef ENABLE_DUMP_CODE_FLOW
+static int kk = 0;
+static char symBuf1[KSYM_SYMBOL_LEN];
+static char symBuf2[KSYM_SYMBOL_LEN];
+#endif
+
+
 void arch_do_IRQ(struct pt_regs *regs)
 {
 	int irq = pt_cause(regs);
 	struct pt_regs *old_regs = set_irq_regs(regs);
+
+#ifdef ENABLE_DUMP_CODE_FLOW
+	kk++;
+	if (kk > 400) // 140 * 400
+	{
+	    printk("IRQ: ELR=%08X LR=%08X\n", pt_elr(regs), regs->r31);	
+	    sprint_symbol(symBuf1, pt_elr(regs));
+	    sprint_symbol(symBuf2, regs->r31);
+	    printk("  ELR='%s' LR='%s'\n\n", symBuf1, symBuf2);
+	    kk = 0;	
+	}
+#endif 
 
 	irq_enter();
 	generic_handle_irq(irq);

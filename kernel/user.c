@@ -220,4 +220,6 @@ static int __init uid_cache_init(void)
 	return 0;
 }
 
-module_init(uid_cache_init);
+// Cotulla: test fix by jonpry
+//module_init(uid_cache_init);
+early_initcall(uid_cache_init);

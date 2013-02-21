@@ -235,6 +235,9 @@ void __init smp_prepare_cpus(unsigned int max_cpus)
 	 * descriptor that has this stuff
 	 */
 
+// Cotulla HACK: boot with only one core
+	max_cpus = 1;
+
 	/*  Right now, let's just fake it. */
 	for (i = 0; i < max_cpus; i++)
 		set_cpu_present(i, true);

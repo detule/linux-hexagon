@@ -22,6 +22,7 @@
 #include <linux/init.h>
 #include <asm/asm-offsets.h>
 #include <asm/mem-layout.h>
+#include <asm/hexagon_vm.h>
 #include <asm/vm_mmu.h>
 #include <asm/page.h>
 
@@ -718,8 +719,11 @@ exc_tlb_miss_process:
 
 
    
-
+// called if L1 or L2 page table walk failed
+//
 exc_tlb_miss_invalid:
+
+#if 0
 //    call excpt_error
     LOAD32(r29, DebugStack)
     r0 = elr
@@ -729,8 +733,39 @@ exc_tlb_miss_invalid:
     r3 = r5
     r4 = r6
     call debug_tlbmiss_invalid
+#endif
 
-    jump    .
+   r2 = ssr
+   r2 = and (r2, #3)  
+   p0 = cmp.eq (r2, #1)
+   p1 = cmp.eq (r2, #2)
+   p2 = and (p0, p1)
+
+   r3 = #HVM_GE_C_RPROT
+   if p2 r3 = #HVM_GE_C_WPROT
+
+
+   // we are replacing cause field in SSR to emulate 
+   // HVM behaviour, it will be copied to GSR later
+   //
+   r1 = ssr
+   r1 = insert (r3, #8, #SSR_BIT_CAUSE)
+   ssr = r1
+    
+// restore saved regs for tlbmiss handler 
+// and jump to linux exception handler
+//
+    p3:0  = r0
+    r1:0  = memd (r10 + #_R0100)
+    r3:2  = memd (r10 + #_R0302)
+    r5:4  = memd (r10 + #_R0504)
+    r7:6  = memd (r10 + #_R0706)
+    r9:8  = memd (r10 + #_R0908)
+    crswap (r10, sgp)
+
+    jump exc_fault  
+
+
 
 
 
@@ -788,21 +823,28 @@ exc_tlb_miss_invalid:
 
 
 
+exc_fault:
+ 	EXCEPTION_ENTER_HEAD;
+	jump _K_enter_genex
+
+
 exc_int:
  	EXCEPTION_ENTER_HEAD;
-
 	jump _K_enter_interrupt
 
-.global int_debug
-int_debug:
+
+exc_trap:
+	EXCEPTION_ENTER_HEAD;
+	jump _K_enter_trap0
+
+
+
+ENTRY(int_debug)
     LOAD32(r29, DebugStack)
     call debug_intr_out
     jump  .
 
-exc_trap:
-	EXCEPTION_ENTER_HEAD;
 
-	jump _K_enter_trap0
 
 // ret in r0,r1,r2,r3,r4 only r31,r5 can be clobbered!
 .global coresys_getregs
@@ -856,6 +898,7 @@ coresys_rte:
 	p0 = tstbit(r1,#GSR_IE);
 	if(!p0) jump 1f
 	r2 = setbit(r2,#SSR_BIT_IE)
+	r2 = setbit(r2,#SSR_BIT_EXC) // TODO: should it be here?
 1:
 	ssr=r2;
 	
