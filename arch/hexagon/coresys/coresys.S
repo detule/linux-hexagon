@@ -748,21 +748,21 @@ exc_tlb_miss_invalid:
 	r0 = setbit(r0,#GSR_IE); \
 1: \
 	p0 = tstbit(r1,#SSR_BIT_USR); \
+	r1 = r29; \
+	if(!p0) jump 1f;\
+		/*If usermode switch to kernel stack, else borrow stack in r29*/ \
+		r1 = memw(r10 + #_RGOSP);\
+		{ r1 = r29; r29 = r1; }\
+		r0 = setbit(r0,#GSR_USR);\
+1:\
+	memw(r10 + #_RGOSP) = r1; \
+	memw(r10 + #_RGSR) = r0;\
+	/*Restore r0,r10*/ \
+	r1:0 = memd(r10+#_R0100); \
+	crswap (r10, sgp)
 
 exc_int:
  	EXCEPTION_ENTER_HEAD;
-	if(!p0) jump 1f 
-		//If usermode switch to kernel stack, else borrow stack in r29
-		r1 = memw(r10 + #_RGOSP);
-		{ r1 = r29; r29 = r1; }
-		memw(r10 + #_RGOSP) = r1; 
-		r0 = setbit(r0,#GSR_USR)
-1:
-	memw(r10 + #_RGSR) = r0;
-	
-	//Restore r0,r10
-	r1:0 = memd(r10+#_R0100);
-	crswap (r10, sgp)
 
 	jump _K_enter_interrupt
 
@@ -774,24 +774,6 @@ int_debug:
 
 exc_trap:
 	EXCEPTION_ENTER_HEAD;
-	if(!p0) jump 1f
-	r0 = setbit(r0,#GSR_IE)
-1:
-
-	p0 = tstbit(r1,#SSR_BIT_USR);
-	if(!p0) jump 1f 
-	r0 = setbit(r0,#GSR_USR)
-1:
-	memw(r10 + #_RGSR) = r0;
-
-	//musical chairs with stack pointer
-	r0 = memw(r10 + #_RGOSP);
-	{ r0 = r29; r29 = r0; }
-	memw(r10 + #_RGOSP) = r0;
-	
-	//Restore r0,r10
-	r1:0 = memd(r10+#_R0100);
-	crswap (r10, sgp)
 
 	jump _K_enter_trap0
 
@@ -831,9 +813,9 @@ coresys_rte:
 	memd (r10 + #_R0302) = r3:2
 
 //TODO: do this unless this is a kmode interrupt return
-//	r0 = memw(r10 + #_RGOSP);
-//	memw(r10 + #_RGOSP) = r29;
-//	{ r0 = r29; r29 = r0; }
+	r0 = memw(r10 + #_RGOSP);
+	memw(r10 + #_RGOSP) = r29;
+	{ r0 = r29; r29 = r0; }
 
 //deal with gsr
 //TODO: needs to be optimized and actually work so bits can be cleared
