@@ -33,7 +33,13 @@
 #include <asm/time.h>    /*  timer_interrupt  */
 #include <asm/hexagon_vm.h>
 
+
+// TODO is it right value??
 #define BASE_IPI_IRQ 26
+
+
+extern void coresys_int_raise(int intr);
+
 
 /*
  * cpu_possible_mask needs to be filled out prior to setup_per_cpu_areas
@@ -119,12 +125,17 @@ void send_ipi(const struct cpumask *cpumask, enum ipi_message_type msg)
 
 		set_bit(msg, &ipi->bits);
 		/*  Possible barrier here  */
-		retval = __vmintop_post(BASE_IPI_IRQ+cpu);
-
+		
+#if 1
+		coresys_int_raise(BASE_IPI_IRQ + cpu);
+		(void)retval;
+#else
+		retval = __vmintop_post(BASE_IPI_IRQ + cpu);
 		if (retval != 0) {
 			printk(KERN_ERR "interrupt %ld not configured?\n",
 				BASE_IPI_IRQ+cpu);
 		}
+#endif
 	}
 
 	local_irq_restore(flags);

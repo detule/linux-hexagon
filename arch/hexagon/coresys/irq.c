@@ -169,8 +169,10 @@ void __init init_IRQ(void)
 {
 	int irq;
 
-	printk("init_IRQ()\n");
+	printk("+init_IRQ()\n");
+
 	coresys_int_init();
+
 	for (irq = 0; irq < HEXAGON_CPUINTS; irq++) 
 	{
 		mask_irq_num(irq);
@@ -178,6 +180,7 @@ void __init init_IRQ(void)
 //		irq_set_chip_and_handler(irq, &qdsp6_irq_chip, handle_level_irq);
 //		set_irq_flags(irq, IRQF_VALID); // Do we need that?
 	}                      	
-	printk("INTR init done\n");
-	qdsp6_intr_test();	
+
+//	qdsp6_intr_test();	
+	printk("-init_IRQ()\n");
 }

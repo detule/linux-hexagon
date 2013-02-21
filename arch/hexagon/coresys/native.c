@@ -24,6 +24,7 @@
 #include <asm/cacheflush.h>
 #include <asm/hexagon_vm.h>
 #include "native_defs.h"
+#include "tlb_usage.h"
 
 
 
@@ -89,6 +90,7 @@ long __vmcache(enum VM_CACHE_OPS op, unsigned long addr, unsigned long len)
 
 
 extern void my_out(const char *str, ...);
+extern int get_miss_count(void);
 
 static char symBuf1[KSYM_SYMBOL_LEN];
 static char symBuf2[KSYM_SYMBOL_LEN];
@@ -106,9 +108,40 @@ u32 get_ssr(void)
 }
 
 
+void debug_dump_tlb(u32 idx)
+{
+	u32 lo = 0, hi = 0;
+
+	__asm__ __volatile__(
+		"tlbidx = %2;\n"
+		"tlbr;\n"
+		"%0 = tlblo;\n"
+		"%1 = tlbhi;\n"
+		: "=r" (lo), "=r" (hi)
+		: "r" (idx)
+	);
+	my_out("TLB %d values: LO_PA=%08X HI_VA=%08X\n", idx, lo, hi);
+}
+
+
+void debug_tlb_miss_fetch(void)
+{
+	my_out("== swapper_pg_dir DEBUG ==\n");
+	my_out("\tswapper_pg_dir VA: %X PA: %X\n", (u32)swapper_pg_dir, __pa(swapper_pg_dir));
+	my_out("\tswapper_pg_dir[0] = %08X\n\t", swapper_pg_dir[0]);
+	debug_dump_tlb(TLBUSG_L1FETCH);
+}
+
+
+
 void debug_error_out(uint32_t elr, uint32_t badva, uint32_t lr)
 {
-	my_out("ERROR: ELR=%08X ADDR=%08X LR=%08X\r\n", elr, badva, lr);
+	my_out("ERROR: ELR=%08X ADDR=%08X LR=%08X\r\n", elr, badva, lr);	
+	my_out("swapper entry %08X\n", swapper_pg_dir[badva >> 22]);
+
+	debug_dump_tlb(TLBUSG_L1FETCH);
+	debug_dump_tlb(TLBUSG_L2FETCH);
+	
 	sprint_symbol(symBuf1, elr);
 	sprint_symbol(symBuf2, lr);
 	my_out("  ELR='%s' LR='%s'\r\n", symBuf1, symBuf2);
@@ -124,4 +157,23 @@ void debug_intr_out(uint32_t elr, uint32_t lr)
 }
 
 
+//void debug_tlbmiss_invalid(uint32_t elr, uint32_t badva, uint32_t lr)
+void debug_tlbmiss_invalid(uint32_t elr, uint32_t badva, uint32_t lr, u32 indx, u32 tid)
+{
+	my_out("ERROR TLBMISS %d: ELR=%08X ADDR=%08X LR=%08X %X %X\r\n", get_miss_count(), elr, badva, lr, indx, tid);	
+	my_out("swapper entry  %08X\n", swapper_pg_dir[badva >> 22]);
+	my_out("swapper entry2 %08X\n", ((u32*)0xF0000000)[badva >> 22]);
+	my_out("swapper entry3 %08X\n", ((u32*)0xF0100000)[(badva >> 12) & 0x3FF]);
+
+	debug_dump_tlb(TLBUSG_L1FETCH);
+	debug_dump_tlb(TLBUSG_L2FETCH);
+	debug_dump_tlb(TLBUSG_REPLACE_MIN);
+	debug_dump_tlb(TLBUSG_REPLACE_MIN + 1);
+	
+#if 0
+	sprint_symbol(symBuf1, elr);
+	sprint_symbol(symBuf2, lr);
+	my_out("  ELR='%s' LR='%s'\r\n", symBuf1, symBuf2);
+#endif
+}
                                   
