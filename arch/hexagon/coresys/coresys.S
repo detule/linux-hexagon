@@ -70,14 +70,6 @@
 #define L2FETCH_TLB_HI      TLB_MAKE_HI(TLB_ADDR(L2FETCH_ADDRESS), 1, 0)  // global = 1, ASID = 0
 #define L2FETCH_TLB_LO      TLB_MAKE_LO(0, TLB_SIZE_4K, TLB_L1WB_L2C, TLB_R) // without actual PA address
 
-.section	".tags.text","ax"
-.global __initrd_start
-.global __initrd_size
-__initrd_start:
-.word 0
-__initrd_size:
-.word 0
-
 
 	__CPUINIT
 

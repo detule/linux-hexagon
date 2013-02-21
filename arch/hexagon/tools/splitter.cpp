@@ -3,6 +3,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+
+#define BOOTPARAM_SIGN		0x50423651	'Q6BP'
+
 #define PHYS phys//0x47000000
 #define ENTRY_OFFSET 0x1000
 #define INITRD_OFFSET 0xb00000 //12MB
@@ -56,8 +59,9 @@ int main(int argc, char** argv){
 	fclose(f);
 
 	//Update kernel tags
-	((unsigned int*)buf)[0] = PHYS + INITRD_OFFSET;
-	((unsigned int*)buf)[1] = initrd_numbytes;
+	((unsigned int*)buf)[0] = BOOTPARAM_SIGN;
+	((unsigned int*)buf)[1] = PHYS + INITRD_OFFSET;
+	((unsigned int*)buf)[2] = initrd_numbytes;
 	
 	//Write out the kernel binary segment
 

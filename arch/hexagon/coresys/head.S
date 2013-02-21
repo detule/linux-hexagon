@@ -64,6 +64,25 @@ Startup tasks:
 
 
 
+// Boot parameters
+// used to pass information to kernel
+// signature 'Q6BP' = 0x50423651
+// they are located at C000 0000
+// kernel starts at C000 1000
+//
+
+.section	".tags.text","ax"
+.global __initrd_sign
+.global __initrd_start
+.global __initrd_size
+
+__initrd_sign:   .word 0
+__initrd_start:  .word 0
+__initrd_size:   .word 0
+
+
+
+
 	__HEAD
 ENTRY(stext)
 

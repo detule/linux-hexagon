@@ -36,6 +36,9 @@
 extern void my_out(const char *str, ...);
 
 
+#define BOOTPARAM_SIGN		0x50423651	// 'Q6BP'
+
+
 #ifndef DMA_RESERVE
 #define DMA_RESERVE		(1)
 #endif
@@ -240,8 +243,9 @@ early_param("mem", early_mem);
 
 
 extern pgd_t L1PageTables[PTRS_PER_PGD];
-extern int __initrd_start;
-extern int __initrd_size;
+extern u32 __initrd_sign;
+extern u32 __initrd_start;
+extern u32 __initrd_size;
 
 
 void __init setup_arch_memory(void)
@@ -303,8 +307,15 @@ void __init setup_arch_memory(void)
 	my_out("bootmap_size:  %d\n", bootmap_size);
 	my_out("min_low_pfn:  0x%08X\n", min_low_pfn);
 	my_out("max_low_pfn:  0x%08X\n", max_low_pfn);
-	my_out("initrd_start: 0x%08X\n", __initrd_start);
-	my_out("initrd_size: 0x%08X\n", __initrd_size);
+	if (__initrd_sign == BOOTPARAM_SIGN)
+	{	
+		my_out("initrd_start: 0x%08X\n", __initrd_start);
+		my_out("initrd_size: 0x%08X\n", __initrd_size);
+	}
+	else
+	{
+		my_out("boot params are not present %08X!\n", __initrd_sign);
+	}
 	
 
 	numdma = DMA_RESERVED_BYTES >> 22;  // num of 4M blocks
@@ -315,9 +326,9 @@ void __init setup_arch_memory(void)
 				| __HVM_PTE_R | __HVM_PTE_W | __HVM_PTE_X
 				| __HEXAGON_C_UNC << 6 | __HVM_PDE_S_4MB);
 	}	
-
-#ifdef CONFIG_BLK_DEV_INITRD
-	if (__initrd_start && __initrd_size) {
+        	
+#ifdef CONFIG_BLK_DEV_INITRD	
+	if (__initrd_sign == BOOTPARAM_SIGN && __initrd_start && __initrd_size) {
 		if (__initrd_start + __initrd_size <= (max_low_pfn << PAGE_SHIFT)) {
 			reserve_bootmem(__initrd_start, __initrd_size, BOOTMEM_DEFAULT);
 			initrd_start = (u32)phys_to_virt(__initrd_start);
