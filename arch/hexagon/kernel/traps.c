@@ -148,6 +148,19 @@ static void do_show_stack(struct task_struct *task, unsigned long *fp,
 			break;
 		}
 
+// Cotulla: check for stack range here..
+// and terminate chain
+//                printk("newfp = %08X %08X %X %X\n", newfp, fp, low, high);
+		if (newfp < fp)
+			break;
+
+		if (((unsigned long) fp < low) || ((unsigned long) fp >= high))
+		{
+			printk(KERN_CONT " (FP went out of bounds %08X < %08X <= %08X!)\n", (u32)low, (u32)fp, (u32)high);
+			break;
+		}
+
+
 		/* Attempt to continue past exception. */
 		if (0 == newfp) {
 			struct pt_regs *regs = (struct pt_regs *) (((void *)fp)
@@ -182,6 +195,7 @@ static void do_show_stack(struct task_struct *task, unsigned long *fp,
 			fp = newfp;
 		else
 			break;
+		
 	}
 }
 

@@ -28,15 +28,23 @@
 #define TLBUSG_DEBUG2		3
 
 
-// used to fetch values from L2 page tables
-// VA always same, 0xF0000000, 4K mapping
+// used to fetch values from L1 page tables
+// VA always same: 0xF0100000 + 0x1000 * TID, 4K mapping
+// 6 entries for hw threads
 //
-#define TLBUSG_L2FETCH		4
+#define TLBUSG_L1FETCH		4
+
+
+// used to fetch values from L1 page tables
+// VA always same: 0xF0000000 + 0x1000 * TID, 4K mapping
+// 6 entries for hw threads
+//
+#define TLBUSG_L2FETCH		10
 
 
 // minimum TLB entry for replacement
 //
-#define TLBUSG_REPLACE_MIN	5
+#define TLBUSG_REPLACE_MIN	16
 
 
 // maximum TLB entry for replacement

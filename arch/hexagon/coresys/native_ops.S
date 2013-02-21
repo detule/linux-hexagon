@@ -45,12 +45,17 @@ ENTRY(__vmsetvec)
   r0 possible values are:
 	VM_INT_DISABLE	= 0
 	VM_INT_ENABLE	= 1
+  
+  must returns old interrupt state 
 */
+
 
 ENTRY(__vmsetie)
 	r1 = ssr
+	r2 = extractu (r1, #1, #SSR_BIT_IE)	
 	r1 = insert (r0, #1, #SSR_BIT_IE)	
 	ssr = r1
+	r0 = r2
 	jumpr	R31;
 
 ENTRY(__vmgetie)

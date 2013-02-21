@@ -141,7 +141,7 @@ ENTRY(stext)
 // this code works only if RAM size >= 16M.
 // the rest (RAM_SIZE - 16M) must be mapped somewhere else during boot
 //
-    	LOAD32(r1, TLB_MAKE_LO(TLB_ADDR(PHYS_OFFSET), TLB_SIZE_16M, TLB_L1WB_L2UC, TLB_RWX))
+    	LOAD32(r1, TLB_MAKE_LO(TLB_ADDR(PHYS_OFFSET), TLB_SIZE_16M, TLB_L1WB_L2C, TLB_RWX))
     	LOAD32(r2, TLB_MAKE_HI(TLB_ADDR(PAGE_OFFSET), 1, 0)) // global
 
         r0 = #TLBUSG_CORE
@@ -232,8 +232,6 @@ __head_s_vaddr_target:
 	r0 = #TLBUSG_INDENTITY
 	TLB_ENTRY_SET r0, r2, r2 // idx, lo, hi
 
-	r0 = r24
-	//call __vmnewmap
 
 	/*  Go ahead and install the trap0 return so angel calls work  */
 	// CotullaTODO:
@@ -277,6 +275,18 @@ __head_s_vaddr_target:
 	call memset;
 
 
+ 	// setup initial page table
+        LOAD32(r0, swapper_pg_dir)
+	// convert VA -> PA
+        // PA = VA - PAGE_OFFSET + PHYS_OFFSET
+        // PA = VA + (PHYS_OFFSET - PAGE_OFFSET)
+	// C010 0000 -> 1010 0000       
+        LOAD32(r1, (PHYS_OFFSET - PAGE_OFFSET))
+        r0 = add (r0, r1) 
+
+	call coresys_newmap
+
+
 // Cotulla: Test LEO bzZZzz code    
 #if 0
      r0.h = #0xA900
@@ -306,6 +316,7 @@ if (p0) jump 1b
 1:
 jump 1b
 #endif
+	call debug_tlb_miss_fetch
 
 	/* Time to make the doughnuts and drink Kefir.   */
 	call start_kernel		
@@ -324,3 +335,5 @@ ENTRY(external_cmdline_buffer)
 .p2align PAGE_SHIFT
 ENTRY(empty_zero_page)
         .fill _PAGE_SIZE,1,0
+
+

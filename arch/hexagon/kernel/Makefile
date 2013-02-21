@@ -11,7 +11,7 @@ obj-$(CONFIG_KGDB)    += kgdb.o
 obj-$(CONFIG_MODULES) += module.o hexagon_ksyms.o
 
 # Modules required to work with the Hexagon Virtual Machine
-obj-y += vm_events.o vm_switch.o vm_init_segtable.o
+obj-y += vm_events.o vm_switch.o
 obj-y += vm_vectors.o
 
 obj-$(CONFIG_HAS_DMA) += dma.o

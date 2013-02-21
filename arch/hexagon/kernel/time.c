@@ -35,7 +35,7 @@
 
 
 extern void my_out(const char *str, ...);
-
+extern int get_miss_count(void);
 
 /*
  * For the clocksource we need:
@@ -92,6 +92,8 @@ static struct clocksource hexagon_clocksource = {
 static int set_next_event(unsigned long delta, struct clock_event_device *evt)
 {
 	/*  Assuming the timer will be disabled when we enter here.  */
+
+	printk("set next event %X\n", delta);
 
 	iowrite32(1, &rtos_timer->clear);
 	iowrite32(0, &rtos_timer->clear);
@@ -206,6 +208,14 @@ void __init time_init_deferred(void)
 
 	/*  ioremap here means this has to run later, after paging init  */
 	rtos_timer = ioremap(resource->start, resource_size(resource));
+
+
+	printk("tlbmiss1 %d\n", get_miss_count());
+	printk("timer test1: %08X COUNT=%08X\n", rtos_timer, ioread32(&rtos_timer->count));
+	printk("timer test2: %08X COUNT=%08X\n", rtos_timer, ioread32(&rtos_timer->count));
+	printk("tlbmiss2 %d\n", get_miss_count());
+	
+	
 
 	if (!rtos_timer) {
 		release_mem_region(resource->start, resource_size(resource));
