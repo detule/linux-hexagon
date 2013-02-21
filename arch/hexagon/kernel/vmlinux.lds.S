@@ -36,6 +36,8 @@ See asm-generic/sections.h for seemingly required labels.
 
 #define PAGE_SIZE _PAGE_SIZE
 
+#define ENTRY_OFFSET 0x1000
+
 /*  This LOAD_OFFSET is temporary for debugging on the simulator; it may change
     for hypervisor pseudo-physical memory.  */
 
@@ -44,7 +46,12 @@ SECTIONS
 {
 	. = PAGE_OFFSET + LOAD_ADDRESS;
 
+	.tags : {
+		*(.tags.text)
+	}
+
 	__init_begin = .;
+	. =  PAGE_OFFSET + LOAD_ADDRESS + ENTRY_OFFSET;
 	HEAD_TEXT_SECTION
 	INIT_TEXT_SECTION(PAGE_SIZE)
 	PERCPU_SECTION(L1_CACHE_BYTES)

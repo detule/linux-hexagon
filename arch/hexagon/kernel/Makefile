@@ -1,9 +1,8 @@
 extra-y := head.o vmlinux.lds
 
  
-obj-$(CONFIG_SMP) += smp.o topology.o
-
-obj-y += setup.o traps.o syscalltab.o signal.o time.o
+obj-$(CONFIG_SMP) += smp.o 
+obj-y += setup.o traps.o syscalltab.o signal.o time.o topology.o
 obj-y += process.o syscall.o trampoline.o reset.o ptrace.o
 obj-y += vdso.o
 
