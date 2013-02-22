@@ -73,12 +73,8 @@ ENTRY(__vmclrmap)
 //	trap1(#HVM_TRAP1_VMCLRMAP);
 	jumpr	R31;
 
-ENTRY(__vmnewmap)
-// TODO: save pointer or copy map to global
-//	r1 = #VM_NEWMAP_TYPE_PGTABLES;
-//	trap1(#HVM_TRAP1_VMNEWMAP);
-	jumpr	R31;
 
+// __vmnewmap implemented inside .C file
 // __vmcache implemented inside .C file
 
 

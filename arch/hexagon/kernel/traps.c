@@ -314,12 +314,24 @@ static void cache_error(struct pt_regs *regs)
 	die("Cache Error", regs, 0);
 }
 
+
+static char symBuf1[KSYM_SYMBOL_LEN];
+static char symBuf2[KSYM_SYMBOL_LEN];
+static int kounter = 0;
 /*
  * General exception handler
  */
 void do_genex(struct pt_regs *regs)
 {
-	printk("FAULT LR=%08X ELR=%08X CAUSE=%08X\n", regs->r31, pt_elr(regs), pt_cause(regs));
+	if (++kounter < 150)
+	{
+	printk("FAULT R0=%X R1=%X LR=%08X ELR=%08X CAUSE=%08X BADVA=%08X\n", regs->r00, regs->r01, regs->r31, pt_elr(regs), pt_cause(regs), pt_badva(regs));
+	sprint_symbol(symBuf1, pt_elr(regs));
+	sprint_symbol(symBuf2, regs->r31);
+	printk("  ELR='%s' LR='%s'\n\n", symBuf1, symBuf2);
+//	dump_stack();
+	do_show_stack(current, &regs->r30, pt_elr(regs));
+	}
 
 	/*
 	 * Decode Cause and Dispatch

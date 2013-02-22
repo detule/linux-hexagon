@@ -34,6 +34,8 @@
 
 
 extern void my_out(const char *str, ...);
+int __init scr_fb_console_init(void);
+
 
 
 #define BOOTPARAM_SIGN		0x50423651	// 'Q6BP'
@@ -372,4 +374,8 @@ void __init setup_arch_memory(void)
 	 *  allocator), and need to be freed themselves via mem_init(),
 	 *  which is called by start_kernel() later on in the process
 	 */
+
+// Uncomment to enable console
+//	scr_fb_console_init();
+
 }

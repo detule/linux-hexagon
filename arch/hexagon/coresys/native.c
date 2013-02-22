@@ -36,8 +36,9 @@
 // for IDSYNC cache opcode (page 30)
 // Not clear why it must flush and invalidate DCache instead of just flush...
 //
-void hexagon_idsync_range(unsigned long start, unsigned long end)
+void hexagon_idsync_range(unsigned long start, unsigned long size)
 {
+	unsigned long end = start + size;
 	unsigned long lines = spanlines(start, end-1);
 	unsigned long i, flags;
 
@@ -88,6 +89,15 @@ long __vmcache(enum VM_CACHE_OPS op, unsigned long addr, unsigned long len)
 	return 0;
 }
 
+
+extern void coresys_newmap(u32 pte_base);
+
+long __vmnewmap(void * base)
+{
+	printk("++++SET NEW MAP++++ %08X\n", (u32)base);
+	coresys_newmap((u32)base);
+	return 0;	
+}
 
 extern void my_out(const char *str, ...);
 extern int get_miss_count(void);

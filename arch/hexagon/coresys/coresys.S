@@ -445,7 +445,7 @@ exc_reserved:
 // 
 #if 1
     LOAD32(r29, DebugStack)
-    r0 = r8
+    r0 = elr
     r1 = badva
     r2 = r31
     call debug_error_out
@@ -604,6 +604,22 @@ exc_tlb_miss_common:
     r3 = addasl (r4, r7, #2)
     r3 = memw (r3)                  // r3 = entry from L2 table
 
+// Check bit field layout here
+#if __HVM_PTE_W_BIT != __HVM_PTE_R_BIT + 1
+#error Wrong bit definitions W
+#endif
+#if __HVM_PTE_X_BIT != __HVM_PTE_R_BIT + 2
+#error Wrong bit definitions X
+#endif
+
+    // extract RWX
+    r7 = extractu (r3, #3, #__HVM_PTE_R_BIT)
+
+    // if all RWX are zero this is invalid/empty L2 entry 
+    // call fault handler
+    p0 = cmp.eq (r7, #0)
+    if p0 jump exc_tlb_miss_invalid
+
 /*
     r2 = r5
     r1 = r4
@@ -734,6 +750,14 @@ exc_tlb_miss_invalid:
     r4 = r6
     call debug_tlbmiss_invalid
 #endif
+
+   // linux exception handle code 
+   // assumes that badva contains fault address
+   // but for tlbmissX fault address IS in ELR
+   // so we fix it here
+   //
+   badva = r1
+
 
    r2 = ssr
    r2 = and (r2, #3)  

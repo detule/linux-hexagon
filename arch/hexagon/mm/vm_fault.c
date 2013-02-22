@@ -145,6 +145,10 @@ good_area:
 		info.si_signo = SIGSEGV;
 		info.si_code = SEGV_ACCERR;
 	}
+
+// Cotulla debug
+        printk("do_page_fault: A=%X C=%X F=%X VMF=%X SIGNAL %d\n", address, cause, fault, vma->vm_flags, info.si_signo);
+
 	info.si_errno = 0;
 	info.si_addr = (void __user *)address;
 	force_sig_info(info.si_code, &info, current);
@@ -154,6 +158,10 @@ bad_area:
 	up_read(&mm->mmap_sem);
 
 	if (user_mode(regs)) {
+
+// Cotulla debug
+        	printk("do_page_fault: A=%X C=%X F=%X\n", address, cause, fault);
+
 		info.si_signo = SIGSEGV;
 		info.si_errno = 0;
 		info.si_code = si_code;
