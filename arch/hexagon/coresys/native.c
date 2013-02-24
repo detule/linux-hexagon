@@ -90,7 +90,9 @@ long __vmcache(enum VM_CACHE_OPS op, unsigned long addr, unsigned long len)
 }
 
 
+
 extern void coresys_newmap(u32 pte_base);
+
 
 long __vmnewmap(void * base)
 {
@@ -98,6 +100,8 @@ long __vmnewmap(void * base)
 	coresys_newmap((u32)base);
 	return 0;	
 }
+
+
 
 extern void my_out(const char *str, ...);
 extern int get_miss_count(void);
@@ -130,7 +134,27 @@ void debug_dump_tlb(u32 idx)
 		: "=r" (lo), "=r" (hi)
 		: "r" (idx)
 	);
-	my_out("TLB %d values: LO_PA=%08X HI_VA=%08X\n", idx, lo, hi);
+	my_out("TLB %02d values: LO_PA=%08X HI_VA=%08X\n", idx, lo, hi);
+}
+
+
+void debug_dump_tlb_all()
+{
+	u32 i;
+	u32 lo = 0, hi = 0;
+
+	for (i = 0; i < 64; i++)
+	{
+	__asm__ __volatile__(
+		"tlbidx = %2;\n"
+		"tlbr;\n"
+		"%0 = tlblo;\n"
+		"%1 = tlbhi;\n"
+		: "=r" (lo), "=r" (hi)
+		: "r" (i)
+	);
+	if (lo != 0 && hi != 0) my_out("TLB %02d values: LO_PA=%08X HI_VA=%08X\n", i, lo, hi);
+	}
 }
 
 
@@ -143,10 +167,36 @@ void debug_tlb_miss_fetch(void)
 }
 
 
+void debug_test_out(uint32_t elr, uint32_t badva, uint32_t lr)
+{
+	my_out("ERR_TST: %d SSR=%X ELR=%08X ADDR=%08X LR=%08X\r\n", get_miss_count(), get_ssr(), elr, badva, lr);	
+	
+	sprint_symbol(symBuf1, elr);
+	sprint_symbol(symBuf2, lr);
+	my_out("  ELR='%s' LR='%s'\r\n", symBuf1, symBuf2);
+}
+
+
+extern u32 tlb_debug_log;
+extern u32 DebugLog[];
+
+void debug_tlb_last()
+{
+	int i;
+
+	my_out("tlb_debug_log=%d\r\n", tlb_debug_log);
+
+	for (i = 0; i < tlb_debug_log; i++)
+	{
+		u32 *ptr = &DebugLog[4 * i];
+		my_out("%02d: A=%08X LR=%08X SSR=%08X ELR=%08X\n", i, ptr[0], ptr[1],ptr[2],ptr[3]);	
+	}
+}
+
 
 void debug_error_out(uint32_t elr, uint32_t badva, uint32_t lr)
 {
-	my_out("ERROR: SSR=%X ELR=%08X ADDR=%08X LR=%08X\r\n", get_ssr(), elr, badva, lr);	
+	my_out("ERROR: %d SSR=%X ELR=%08X ADDR=%08X LR=%08X\r\n", get_miss_count(), get_ssr(), elr, badva, lr);	
 	my_out("swapper entry %08X\n", swapper_pg_dir[badva >> 22]);
 
 	debug_dump_tlb(TLBUSG_L1FETCH);
@@ -155,8 +205,14 @@ void debug_error_out(uint32_t elr, uint32_t badva, uint32_t lr)
 	sprint_symbol(symBuf1, elr);
 	sprint_symbol(symBuf2, lr);
 	my_out("  ELR='%s' LR='%s'\r\n", symBuf1, symBuf2);
+	debug_tlb_last();
 }
 
+
+void do_dump_tlb_miss(u32 elr, u32 badva, u32 lr)
+{
+	my_out("MISSTLB: %d SSR=%X ELR=%08X ADDR=%08X LR=%08X\r\n", get_miss_count(), get_ssr(), elr, badva, lr);
+}
 
 void debug_intr_out(uint32_t elr, uint32_t lr)
 {

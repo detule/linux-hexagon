@@ -187,6 +187,9 @@ static struct irqaction rtos_timer_intdesc = {
 	.name = "rtos_timer"
 };
 
+
+extern void coresys_user_test(void);
+
 /*
  * time_init_deferred - called by start_kernel to set up timer/clock source
  *
@@ -218,6 +221,9 @@ void __init time_init_deferred(void)
 	printk("timer test2: %08X COUNT=%08X\n", rtos_timer, ioread32(&rtos_timer->count));
 	printk("tlbmiss2 %d\n", get_miss_count());
 
+//	*(u32*)0xF0300000 = 0x11223344;
+//	coresys_user_test();
+//	printk("tlbmiss3 %d\n", get_miss_count());
 
 	if (!rtos_timer) {
 		release_mem_region(resource->start, resource_size(resource));

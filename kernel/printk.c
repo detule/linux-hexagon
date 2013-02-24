@@ -1684,10 +1684,8 @@ asmlinkage int printk(const char *fmt, ...)
 	va_start(args, fmt);
 #ifdef CONFIG_MYOUT_PRINTK
 	my_out_va(fmt, args);
-	r=0;
-#else
-	r = vprintk_emit(0, -1, NULL, 0, fmt, args);
 #endif
+	r = vprintk_emit(0, -1, NULL, 0, fmt, args);
 	va_end(args);
 
 	return r;

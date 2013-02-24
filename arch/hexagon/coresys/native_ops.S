@@ -68,12 +68,8 @@ ENTRY(__vmintop)
 	trap1(#HVM_TRAP1_VMINTOP);
 	jumpr	R31;
 
-ENTRY(__vmclrmap)
-// TODO: clear TLB entries and map values
-//	trap1(#HVM_TRAP1_VMCLRMAP);
-	jumpr	R31;
 
-
+// __vmclrmap implemented inside .C file
 // __vmnewmap implemented inside .C file
 // __vmcache implemented inside .C file
 

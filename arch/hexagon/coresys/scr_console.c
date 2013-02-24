@@ -89,11 +89,12 @@ const struct font_desc *scr_fb_default_font;
 /* Pointer to font data (255 * font_rows bytes of data)  */
 const unsigned char *scr_fb_font_data;
 
-/* Size of font in pixels */
-unsigned int scr_fb_font_cols, scr_fb_font_rows;
 
-/* Size of console in chars */
-unsigned int scr_fb_console_cols, scr_fb_console_rows;
+#define scr_fb_font_cols	8
+#define scr_fb_font_rows	16
+#define scr_fb_console_cols 	(SCR_FB_LCD_WIDTH / scr_fb_font_cols)
+#define	scr_fb_console_rows 	(SCR_FB_LCD_HEIGHT / scr_fb_font_rows)
+
 
 /* Current position of cursor (where next character will be written) */
 unsigned int scr_fb_cur_x, scr_fb_cur_y;
@@ -107,6 +108,7 @@ unsigned char scr_fb_fg[SCR_FB_CON_MAX_ROWS][SCR_FB_CON_MAX_COLS];
 unsigned char scr_fb_bg[SCR_FB_CON_MAX_ROWS][SCR_FB_CON_MAX_COLS];
 
 static void scr_fb_console_write(struct console *console, const char *s, unsigned int count);
+
 
 
 /* Console data */
@@ -247,11 +249,6 @@ static void scr_fb_console_write(struct console *console, const char *s, unsigne
 	}
 
 	scr_fb_console_update();
-
-#ifdef CONFIG_SCR_FB_CONSOLE_DELAY
-	/* Delay so we can see what's there, we have no keys to scroll */
-	mdelay(500);
-#endif
 }
 
 // Make sure we don't init twice
@@ -269,22 +266,14 @@ int __init scr_fb_console_init(void)
 
 
 	/* Init font (we support any font that has width <= 8; height doesn't matter) */
-	scr_fb_default_font = get_default_font(SCR_FB_LCD_WIDTH, SCR_FB_LCD_HEIGHT, 0xFF, 0xFFFFFFFF);
-	if (!scr_fb_default_font) 
-	{
-		printk(KERN_WARNING "Can't find a suitable font for scr_fb\n");
-		return -1;
-	}
-
+//	scr_fb_default_font = get_default_font(SCR_FB_LCD_WIDTH, SCR_FB_LCD_HEIGHT, 0xFF, 0xFFFFFFFF);
+//	if (!scr_fb_default_font) 
+//	{
+//		printk(KERN_WARNING "Can't find a suitable font for scr_fb\n");
+//		return -1;
+//	}
+	scr_fb_default_font = &font_vga_8x16;
 	scr_fb_font_data = scr_fb_default_font->data;
-	scr_fb_font_cols = scr_fb_default_font->width;
-	scr_fb_font_rows = scr_fb_default_font->height;
-	scr_fb_console_cols = SCR_FB_LCD_WIDTH / scr_fb_font_cols;
-	if (scr_fb_console_cols > SCR_FB_CON_MAX_COLS)
-		scr_fb_console_cols = SCR_FB_CON_MAX_COLS;
-	scr_fb_console_rows = SCR_FB_LCD_HEIGHT / scr_fb_font_rows;
-	if (scr_fb_console_rows > SCR_FB_CON_MAX_ROWS)
-		scr_fb_console_rows = SCR_FB_CON_MAX_ROWS;
 
 	/* Clear the buffer; we could probably see the Haret output if we didn't clear
 	 * the buffer (if it used same physical address) */

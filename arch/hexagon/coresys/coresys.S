@@ -83,10 +83,13 @@ ENTRY(_SW_MMU_START)
 // this global variable holds last changed TLB index
 // during TLBMiss operation
 //
+.global tlb_last_index
 tlb_last_index: .word   TLBUSG_REPLACE_MIN
 
 tlb_miss_count: .word   0
 
+.global tlb_debug_log
+tlb_debug_log:  .word   0
 
 
 ///////////////////////////////////////////////////////////////////////
@@ -334,6 +337,28 @@ ENTRY(get_miss_count)
 
 
 
+ENTRY(coresys_clear_tlb_replace)
+// clear replacement tlb entries
+    r0 = #TLBUSG_REPLACE_MIN
+    r2 = #0
+.cs_tlb_clear_lp:
+    p0 = cmp.gt (r0, #TLBUSG_REPLACE_MAX)
+    if p0 jump .cs_tlb_clear_exit
+
+    TLB_ENTRY_SET r0, r2, r2 // idx, lo, hi
+
+    { 
+	r0 = add (r0, #1)
+        jump .cs_tlb_clear_lp 
+    }
+
+.cs_tlb_clear_exit:
+     jumpr r31
+   
+
+
+
+
 // r0 - physical address of L1 pagetable
 //
 ENTRY(coresys_newmap)
@@ -380,6 +405,26 @@ ENTRY(coresys_clrmap)
     jumpr r31
 
 
+ENTRY(coresys_user_test)
+    r0 = ssr
+    r1 = #1 
+    r0 = insert (r1, #3, #16)
+    ssr = r0
+
+    LOAD32(r0, 0xF0300000)	// +10
+    r1 = memw(r0)               // +18
+    memw(r0) = r3
+
+    jump .
+
+    LOAD32(r0, user_jump)
+    elr = r0
+    rte
+user_jump:
+    r0 = ssr
+    jumpr r31
+
+
 
 
 //
@@ -389,8 +434,8 @@ ENTRY(coresys_clrmap)
 exc_vectors:
     jump exc_reset
     jump exc_nmi
-    jump exc_error
-    jump exc_error
+    jump exc_error2
+    jump exc_error2
     jump exc_tlbmiss_X
     jump exc_reserved
     jump exc_tlbmiss_RW
@@ -437,7 +482,6 @@ exc_vectors:
     jump exc_int
 
 
-exc_nmi:
 exc_error:
 exc_reserved:
 //    jump handle_error_exception
@@ -450,6 +494,16 @@ exc_reserved:
     r2 = r31
     call debug_error_out
 #endif
+    jump    .
+
+
+
+exc_test:
+    LOAD32(r29, DebugStack)
+    r0 = elr
+    r1 = badva
+    r2 = r31
+    call debug_test_out
     jump    .
 
 
@@ -542,12 +596,34 @@ exc_tlbmiss_RW:
 exc_tlb_miss_common:
 	r8 = elr
 
+
 // Process statistic
 //
     LOAD32(r3, tlb_miss_count)
     r6 = memw(r3)
     r6 = add (r6, #1)
     memw(r3) = r6
+
+
+// uncomment to have a log of TLB miss calls
+//
+#if 0
+    LOAD32(r3, DebugLog)  
+    LOAD32(r4, tlb_debug_log)
+    r2 = memw(r4)
+    r3 += asl(r2, #4)
+
+    r5 = ssr
+    memw(r3) = r1
+    memw(r3 + #4) = r31  
+    memw(r3 + #8) = r5  
+    memw(r3 + #12) = r8  
+  
+    r2 = add (r2, #1)
+    memw(r4) = r2
+
+#endif
+
 
     GET_TID	r6
 
@@ -643,7 +719,7 @@ exc_tlb_miss_process:
     r2 = memw(r7)
 
     {
-        p0 = cmp.gt (r2, #TLBUSG_REPLACE_MAX)    // MAX
+        p0 = cmp.ge (r2, #TLBUSG_REPLACE_MAX)    // MAX
         if !p0.new r2 = add (r2, #1)
         if (p0.new) r2 = #TLBUSG_REPLACE_MIN    // MIN
     }
@@ -704,23 +780,11 @@ exc_tlb_miss_process:
 // Put size field
     r1 = insert (r5, #3, #TLB_LO_BIT_SIZE)
 
-
-/*
-    r0 = r1
-    r1 = r4
-    call excpt_error
-    jump    .
-*/
-
-
     tlbhi = r4      // VA
     tlblo = r1      // PA
     tlbidx = r2
     tlbw
     isync        
-
-// TEST
-//    jump exc_tlb_miss_invalid
 
 // return code
 //
@@ -732,6 +796,42 @@ exc_tlb_miss_process:
     r9:8  = memd (r10 + #_R0908)
     crswap (r10, sgp)
     rte
+
+
+
+
+
+exc_nmi:
+// path to dump current state 
+//
+    LOAD32(r29, DebugStack)
+    r0 = elr
+    r1 = badva
+    r2 = r31
+    call debug_error_out
+    jump    .
+
+
+
+
+
+// called if TLB present but protection error
+//
+exc_error2:
+#if 0
+// fatal error path
+//
+    LOAD32(r29, DebugStack)
+    r0 = elr
+    r1 = badva
+    r2 = r31
+    call debug_error_out
+    jump    .
+#endif
+
+    jump exc_fault  
+
+    
 
 
    
@@ -749,6 +849,7 @@ exc_tlb_miss_invalid:
     r3 = r5
     r4 = r6
     call debug_tlbmiss_invalid
+    jump .
 #endif
 
    // linux exception handle code 
@@ -763,7 +864,7 @@ exc_tlb_miss_invalid:
    r2 = and (r2, #3)  
    p0 = cmp.eq (r2, #1)
    p1 = cmp.eq (r2, #2)
-   p2 = and (p0, p1)
+   p2 = or (p0, p1)
 
    r3 = #HVM_GE_C_RPROT
    if p2 r3 = #HVM_GE_C_WPROT
@@ -924,8 +1025,8 @@ coresys_rte:
 	r2 = setbit(r2,#SSR_BIT_IE)
 	r2 = setbit(r2,#SSR_BIT_EXC) // TODO: should it be here?
 1:
-	ssr=r2;
-	
+	ssr = r2;
+
 	//Restore r0,r10,flags
 	r0 = memw(r10+#_RFLAGS);
 	p3:0 = r0
@@ -967,6 +1068,11 @@ L1PageTables:
 DebugStack:
     .fill (512), 1, 0
 
+
+    .p2align 2     // Align to 8 bytes
+    .globl DebugLog
+DebugLog:
+    .fill (4096), 1, 0
 
 
 // kernel L1 PTE - 1024 entries, each describes 4M

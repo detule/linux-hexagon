@@ -105,8 +105,8 @@ HI V2 format:
 
 #define TLB_LO_BIT_CACHE    26
 
-#define TLB_LO_BIT_W        29
-#define TLB_LO_BIT_R        30
+#define TLB_LO_BIT_R        29
+#define TLB_LO_BIT_W        30
 #define TLB_LO_BIT_X        31
 
 

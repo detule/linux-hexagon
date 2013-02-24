@@ -375,7 +375,9 @@ void __init setup_arch_memory(void)
 	 *  which is called by start_kernel() later on in the process
 	 */
 
+#ifdef CONFIG_HEXAGON_ARCH_V2
 // Uncomment to enable console
-//	scr_fb_console_init();
+	scr_fb_console_init();
+#endif
 
 }

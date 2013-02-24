@@ -42,6 +42,7 @@
 #define FLT_STORE       1
 
 
+static int kounter;
 /*
  * Canonical page fault handler
  */
@@ -100,6 +101,12 @@ good_area:
 	}
 
 	fault = handle_mm_fault(mm, vma, address, flags);
+#if 0
+	if (++kounter < 32)
+	{
+//	printk("handle_mm_fault: A=%X VMF=%X F=%X %X\n", address, vma->vm_flags, flags, fault);
+	}
+#endif
 
 	if ((fault & VM_FAULT_RETRY) && fatal_signal_pending(current))
 		return;

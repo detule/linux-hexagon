@@ -36,6 +36,10 @@
 # include <linux/kgdb.h>
 #endif
 
+
+extern void my_out(const char *str, ...);
+
+
 #define TRAP_SYSCALL	1
 #define TRAP_DEBUG	0xdb
 
@@ -318,21 +322,41 @@ static void cache_error(struct pt_regs *regs)
 static char symBuf1[KSYM_SYMBOL_LEN];
 static char symBuf2[KSYM_SYMBOL_LEN];
 static int kounter = 0;
+
+extern u32 get_miss_count();
+
+extern void debug_dump_tlb(u32 idx);
+extern void debug_dump_tlb_all();
+extern void debug_tlb_last();
+extern u32 tlb_last_index;
+
 /*
  * General exception handler
  */
 void do_genex(struct pt_regs *regs)
 {
-	if (++kounter < 150)
+#if 0
+//	if (++kounter < 32)
 	{
-	printk("FAULT R0=%X R1=%X LR=%08X ELR=%08X CAUSE=%08X BADVA=%08X\n", regs->r00, regs->r01, regs->r31, pt_elr(regs), pt_cause(regs), pt_badva(regs));
-	sprint_symbol(symBuf1, pt_elr(regs));
-	sprint_symbol(symBuf2, regs->r31);
-	printk("  ELR='%s' LR='%s'\n\n", symBuf1, symBuf2);
-//	dump_stack();
-	do_show_stack(current, &regs->r30, pt_elr(regs));
-	}
+        u32 *ptrL1 = (u32*)0xF0000000;
+        u32 *ptrL2 = (u32*)0xF0100000;
 
+	printk("FAULT %d %d LR=%08X ELR=%08X CAUSE=%08X BADVA=%08X\n", 
+			get_miss_count(), tlb_last_index, regs->r31, pt_elr(regs), pt_cause(regs), pt_badva(regs));
+//	debug_dump_tlb(4);
+//	debug_dump_tlb(10);
+	printk("  L1=%08X L2=%08X\n", ptrL1[0], ptrL2[(0x00089194 >> 12) & 0x3FF]);
+
+//	sprint_symbol(symBuf1, pt_elr(regs));
+//	sprint_symbol(symBuf2, regs->r31);
+	printk("  ELR='%s' LR='%s'\n\n", symBuf1, symBuf2);
+
+//	dump_stack();
+//	do_show_stack(current, &regs->r30, pt_elr(regs));
+//	debug_tlb_last();
+//	debug_dump_tlb_all();
+	}
+#endif
 	/*
 	 * Decode Cause and Dispatch
 	 */
@@ -386,6 +410,10 @@ void do_trap0(struct pt_regs *regs)
 {
 	unsigned long syscallret = 0;
 	syscall_fn syscall;
+
+
+// Cotulla debug
+	my_out("do_trap0 %d\n", regs->r06);
 
 	switch (pt_cause(regs)) {
 	case TRAP_SYSCALL:

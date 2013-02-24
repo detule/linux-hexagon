@@ -58,8 +58,8 @@ void __init setup_arch(char **cmdline_p)
 {
 	char *p = &external_cmdline_buffer;
 
-	my_out("Hello from Hexagon Linux 1\r\n");
-	my_out("Hello from Hexagon Linux 2\r\n");
+	my_out("Hello from Hexagon Linux 1\n");
+	my_out("Hello from Hexagon Linux 2\n");
 
 
 	/*
@@ -71,8 +71,8 @@ void __init setup_arch(char **cmdline_p)
 	sleep_clk_freq = 32000;
 
 
-	my_out("600TEST 1: %llu\r\n", __vmgettime());
-	my_out("600TEST 2: %llu\r\n", __vmgettime());
+	my_out("600TEST 1: %llu\n", __vmgettime());
+	my_out("600TEST 2: %llu\n", __vmgettime());
 
 	//*(volatile uint32_t*)0xA900080C |= 0x20;
 	/*
