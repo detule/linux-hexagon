@@ -91,6 +91,8 @@ tlb_miss_count: .word   0
 .global tlb_debug_log
 tlb_debug_log:  .word   0
 
+.global last_exc_ssr
+last_exc_ssr:  .word   0
 
 ///////////////////////////////////////////////////////////////////////
 //    I N T E R R U P T     C O D E 
@@ -905,6 +907,10 @@ exc_tlb_miss_invalid:
 	/*Save flags*/ 
 	memw(r10 + #_RFLAGS) = r0; 
 	
+	LOAD32 (r0, last_exc_ssr)
+	r1 = ssr
+	memw (r0) = r1
+		
 	/*set the usr mode bit and interupt enable bit in _RGSR */ 
 	r0 = #0; // r0 holds GSR
 
@@ -984,11 +990,12 @@ coresys_getregs:
     crswap (r10, sgp)
 	jumpr lr
 
+
 // r0,r1,r2,r3,r4 arguments, all registers up to 29 safe to clobber
 .global coresys_setregs
 coresys_setregs:
 //interrupts and traps must be disabled here, this state is only valid one per core
-	crswap (r10, sgp)
+    crswap (r10, sgp)
 	elr = r0
 	memw(r10 + #_RGSR) = r1;
 	memw(r10 + #_RGOSP) = r2;
@@ -999,10 +1006,11 @@ coresys_setregs:
     crswap (r10, sgp)
 	jumpr lr
 
+
 // r29 stack, must restore to gosp
 .global coresys_rte
 coresys_rte:
-	crswap (r10, sgp)
+    crswap (r10, sgp)
 	memd (r10 + #_R0100) = r1:0
 	memd (r10 + #_R0302) = r3:2
 
@@ -1015,7 +1023,9 @@ coresys_rte:
 //TODO: needs to be optimized and actually work so bits can be cleared
 	r0 = p3:0
 	r1 = memw(r10 + #_RGSR);
+
 	r2 = ssr;
+
 	p0 = tstbit(r1,#GSR_USR);
 	if(!p0) jump 1f 
 	r2 = setbit(r2,#SSR_BIT_USR)
@@ -1023,9 +1033,12 @@ coresys_rte:
 	p0 = tstbit(r1,#GSR_IE);
 	if(!p0) jump 1f
 	r2 = setbit(r2,#SSR_BIT_IE)
-	r2 = setbit(r2,#SSR_BIT_EXC) // TODO: should it be here?
 1:
+	// we always set EXC bit to prevent race conditions during exit
+	//
+	r2 = setbit(r2,#SSR_BIT_EXC)
 	ssr = r2;
+	isync
 
 	//Restore r0,r10,flags
 	r0 = memw(r10+#_RFLAGS);

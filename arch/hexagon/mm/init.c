@@ -243,8 +243,6 @@ early_param("mem", early_mem);
 
 
 
-
-extern pgd_t L1PageTables[PTRS_PER_PGD];
 extern u32 __initrd_sign;
 extern u32 __initrd_start;
 extern u32 __initrd_size;
@@ -254,7 +252,7 @@ void __init setup_arch_memory(void)
 {
 	int i, dmaptestart, bootmap_size;
 	u32 numdma;
-	u32 *pte = (u32 *) &L1PageTables[0];
+	u32 *pte = (u32 *) &swapper_pg_dir[0];
 
 
 	if (platform_ram_size < (16 * 1024 * 1024 + DMA_RESERVED_BYTES))
@@ -293,7 +291,7 @@ void __init setup_arch_memory(void)
 //
 
 	hexagon_coherent_pool_size  = (size_t)DMA_RESERVED_BYTES;
-	hexagon_coherent_pool_start = (PAGE_OFFSET + PFN_PHYS(bootmem_dma_pfn));
+	hexagon_coherent_pool_start = __va(PFN_PHYS(bootmem_dma_pfn));
 
 	min_low_pfn = bootmem_start_pfn;
 	max_low_pfn = bootmem_dma_pfn; 
@@ -309,6 +307,9 @@ void __init setup_arch_memory(void)
 	my_out("bootmap_size:  %d\n", bootmap_size);
 	my_out("min_low_pfn:  0x%08X\n", min_low_pfn);
 	my_out("max_low_pfn:  0x%08X\n", max_low_pfn);
+	my_out("dma_start:  0x%08X\n", hexagon_coherent_pool_start);
+	my_out("dma_size:   0x%08X\n", hexagon_coherent_pool_size);
+
 	if (__initrd_sign == BOOTPARAM_SIGN)
 	{	
 		my_out("initrd_start: 0x%08X\n", __initrd_start);
@@ -321,13 +322,16 @@ void __init setup_arch_memory(void)
 	
 
 	numdma = DMA_RESERVED_BYTES >> 22;  // num of 4M blocks
-	dmaptestart = (hexagon_coherent_pool_start >> 22);  // start index in the page table
+	dmaptestart = (hexagon_coherent_pool_start >> 22);  // start index in the page table (VA)
 	for (i = 0; i < numdma; i++)
 	{
 		pte[dmaptestart + i] = ((PFN_PHYS(bootmem_dma_pfn + i) & __HVM_PTE_PGMASK_4MB)
 				| __HVM_PTE_R | __HVM_PTE_W | __HVM_PTE_X
 				| __HEXAGON_C_UNC << 6 | __HVM_PDE_S_4MB);
-	}	
+	}	        	
+
+	my_out("numdma= %d %X %08X\n", numdma, dmaptestart, pte[0xC1000000 >> 22]);
+
         	
 #ifdef CONFIG_BLK_DEV_INITRD	
 	if (__initrd_sign == BOOTPARAM_SIGN && __initrd_start && __initrd_size) {

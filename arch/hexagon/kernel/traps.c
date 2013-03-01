@@ -329,6 +329,18 @@ extern void debug_dump_tlb(u32 idx);
 extern void debug_dump_tlb_all();
 extern void debug_tlb_last();
 extern u32 tlb_last_index;
+extern u32 last_exc_ssr;
+extern u32 get_ssr();
+
+
+static void double_exception(struct pt_regs *regs)
+{
+	printk("DOUBLE FAULT %X LR=%08X ELR=%08X CAUSE=%08X BADVA=%08X\n", 
+			last_exc_ssr, regs->r31, pt_elr(regs), pt_cause(regs), pt_badva(regs));
+	do_show_stack(current, &regs->r30, pt_elr(regs));
+	die("Double exception", regs, 0);
+}
+
 
 /*
  * General exception handler
@@ -391,6 +403,9 @@ void do_genex(struct pt_regs *regs)
 		break;
 	case HVM_GE_C_CACHE:
 		cache_error(regs);
+		break;
+	case HVM_GE_C_DOUBLE:
+		double_exception(regs);
 		break;
 	default:
 		/* Halt and catch fire */

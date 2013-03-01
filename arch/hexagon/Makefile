@@ -47,7 +47,9 @@ head-y := arch/hexagon/kernel/head.o
 core-y += arch/hexagon/kernel/ \
 	arch/hexagon/mm/ \
 	arch/hexagon/lib/	\
-	arch/hexagon/coresys/
+	arch/hexagon/coresys/	\
+	arch/hexagon/platform/
+	
 
 # Cotulla ADD for qImage
 #

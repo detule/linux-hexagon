@@ -101,6 +101,8 @@ void dummy_handler(struct pt_regs *regs)
 static int kk = 0;
 static char symBuf1[KSYM_SYMBOL_LEN];
 static char symBuf2[KSYM_SYMBOL_LEN];
+extern u32* hsusb_base;
+void dump_sirc_state();
 #endif
 
 
@@ -109,14 +111,18 @@ void arch_do_IRQ(struct pt_regs *regs)
 	int irq = pt_cause(regs);
 	struct pt_regs *old_regs = set_irq_regs(regs);
 
+	if (irq != 3) printk("IRQ %d\n", irq);
+ 
 #ifdef ENABLE_DUMP_CODE_FLOW
 	kk++;
 	if (kk > 400) // 140 * 400
 	{
 	    printk("IRQ: ELR=%08X LR=%08X\n", pt_elr(regs), regs->r31);	
+	    if (hsusb_base) printk("USB DATA: %08X %08X %08X\n",  hsusb_base[0x140/4], hsusb_base[0x144/4], hsusb_base[0x148/4]);
 	    sprint_symbol(symBuf1, pt_elr(regs));
 	    sprint_symbol(symBuf2, regs->r31);
 	    printk("  ELR='%s' LR='%s'\n\n", symBuf1, symBuf2);
+	    dump_sirc_state();
 	    kk = 0;	
 	}
 #endif 

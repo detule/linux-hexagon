@@ -30,6 +30,7 @@
  * in the kernel_thread_helper function, which does cleanup
  * afterwards.
  */
+
 static void __noreturn kernel_thread_helper(void *arg, int (*fn)(void *))
 {
 	do_exit(fn(arg));

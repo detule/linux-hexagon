@@ -32,6 +32,9 @@
 #endif
 
 
+// from mach-msm/SIRC.c
+extern void msm_init_sirc(void);
+
 extern u32 coresys_int_pending(void);
 extern void coresys_int_gtoggle(int state);
 extern void coresys_int_ltoggle(int state);
@@ -72,7 +75,7 @@ static void qdsp6_irq_unmask(struct irq_data *d)
 
 static void qdsp6_irq_ack(struct irq_data *d)
 {
-//	DBG("done %d\n", d->irq);
+	if (d->irq != 3) DBG("done %d\n", d->irq);
 	coresys_int_done(d->irq);
 
 //	void __iomem *reg = VIC_INT_CLEAR0 + ((d->irq & 32) ? 4 : 0);
@@ -113,7 +116,7 @@ static void qdsp6_irq_eoi(struct irq_data *d)
 {
 	int vidx = (d->irq & 31);
 
-//	DBG("eoi %d\n", d->irq);
+	if (vidx != 3) DBG("eoi %d\n", d->irq);
 	coresys_int_done(vidx);
 }
 
@@ -193,7 +196,12 @@ void __init init_IRQ(void)
 		irq_set_chip_and_handler(irq, &qdsp6_irq_chip, handle_fasteoi_irq);
 //		irq_set_chip_and_handler(irq, &qdsp6_irq_chip, handle_level_irq);
 //		set_irq_flags(irq, IRQF_VALID); // Do we need that?
-	}                      	
+	}                  
+
+#ifdef CONFIG_HEXAGON_ARCH_V2
+	msm_init_sirc();
+#endif
+    	
 
 //	qdsp6_intr_test();	
 	coresys_int_gtoggle(1); 

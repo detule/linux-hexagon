@@ -88,7 +88,7 @@ config NOP_USB_XCEIV
 
 config USB_MSM_OTG
 	tristate "OTG support for Qualcomm on-chip USB controller"
-	depends on (USB || USB_GADGET) && ARCH_MSM
+	depends on (USB || USB_GADGET) && (ARCH_MSM || HEXAGON_ARCH_V2)
 	select USB_OTG_UTILS
 	help
 	  Enable this to support the USB OTG transceiver on MSM chips. It

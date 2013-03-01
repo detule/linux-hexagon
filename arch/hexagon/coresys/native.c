@@ -122,6 +122,17 @@ u32 get_ssr(void)
 }
 
 
+u32 get_elr(void)
+{
+	u32 val = 0;
+
+	__asm__ __volatile__(
+		"%0 = elr;\n"
+		: "=r" (val)
+	);
+	return val;
+}
+
 void debug_dump_tlb(u32 idx)
 {
 	u32 lo = 0, hi = 0;
@@ -242,4 +253,13 @@ void debug_tlbmiss_invalid(uint32_t elr, uint32_t badva, uint32_t lr, u32 indx, 
 	my_out("  ELR='%s' LR='%s'\r\n", symBuf1, symBuf2);
 #endif
 }
+
+
+asmlinkage void __sched test_schedule(void)
+{
+	my_out("schedule1 SSR=%X ELR=%X\n", get_ssr(), get_elr());
+	schedule();
+	my_out("schedule2 SSR=%X\n", get_ssr());
+}
+
                                   

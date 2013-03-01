@@ -135,6 +135,15 @@ ENTRY(stext)
      ssr = r0
      isync
 
+
+     r1 = #2
+     r0 = syscfg
+     r0 = insert(r1, #2, #16) 
+     syscfg = r0
+     isync
+     l2kill
+     isync     
+
 //////
 
 

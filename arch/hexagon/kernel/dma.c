@@ -60,6 +60,7 @@ static void *hexagon_dma_alloc_coherent(struct device *dev, size_t size,
 {
 	void *ret;
 
+	printk("hexagon_dma_alloc_coherent %d\n", size);
 	if (coherent_pool == NULL) {
 		coherent_pool = gen_pool_create(PAGE_SHIFT, -1);
 
@@ -70,14 +71,18 @@ static void *hexagon_dma_alloc_coherent(struct device *dev, size_t size,
 				hexagon_coherent_pool_start,
 				hexagon_coherent_pool_size, -1);
 	}
+	printk("hexagon_dma_alloc_coherent2 %X %X\n", hexagon_coherent_pool_start, hexagon_coherent_pool_size);
 
 	ret = (void *) gen_pool_alloc(coherent_pool, size);
+	printk("hexagon_dma_alloc_coherent3 %X\n", ret);
 
 	if (ret) {
 		memset(ret, 0, size);
 		*dma_addr = (dma_addr_t) (ret - PAGE_OFFSET);
 	} else
 		*dma_addr = ~0;
+
+	printk("hexagon_dma_alloc_coherent4\n");
 
 	return ret;
 }
@@ -213,10 +218,15 @@ struct dma_map_ops hexagon_dma_ops = {
 	.is_phys	= 1,
 };
 
-void __init hexagon_dma_init(void)
+
+int __init hexagon_dma_init(void)
 {
+	printk("hexagon_dma_init\n");
 	if (dma_ops)
 		return;
 
 	dma_ops = &hexagon_dma_ops;
+	return 0;
 }
+fs_initcall(hexagon_dma_init);
+

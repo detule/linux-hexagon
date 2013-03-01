@@ -201,10 +201,11 @@ event_dispatch:
 	// enable exception mode.
 	// note interrupt will be reenabled 
 	// according to GSR_IE state
-	r3 = ssr
-	r3 = setbit(r3, #SSR_BIT_EXC)
-	ssr = r3
-	isync
+// 
+//	r3 = ssr
+//	r3 = setbit(r3, #SSR_BIT_EXC)
+//	ssr = r3
+//	isync
 
 	/*
 	 * If we were in kernel mode, we don't need to check scheduler
