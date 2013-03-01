@@ -40,10 +40,6 @@ struct ram_console_buffer {
 
 #define RAM_CONSOLE_SIG (0x43474244) /* DBGC */
 
-#ifdef CONFIG_ANDROID_RAM_CONSOLE_EARLY_INIT
-static char __initdata
-	ram_console_old_log_init_buffer[CONFIG_ANDROID_RAM_CONSOLE_EARLY_SIZE];
-#endif
 static char *ram_console_old_log;
 static size_t ram_console_old_log_size;
 
@@ -114,10 +110,9 @@ static int __init ram_console_init(volatile struct ram_console_buffer *buffer,
 static int __init ram_console_early_init(void)
 {
 	return ram_console_init((struct ram_console_buffer *)
-		CONFIG_ANDROID_RAM_CONSOLE_EARLY_ADDR,
-		CONFIG_ANDROID_RAM_CONSOLE_EARLY_SIZE,
+		0,0,
 		NULL,
-		ram_console_old_log_init_buffer);
+		0);
 }
 
 struct ram_console_port {
