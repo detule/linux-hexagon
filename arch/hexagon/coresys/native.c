@@ -149,7 +149,7 @@ void debug_dump_tlb(u32 idx)
 }
 
 
-void debug_dump_tlb_all()
+void debug_dump_tlb_all(void)
 {
 	u32 i;
 	u32 lo = 0, hi = 0;
@@ -191,7 +191,7 @@ void debug_test_out(uint32_t elr, uint32_t badva, uint32_t lr)
 extern u32 tlb_debug_log;
 extern u32 DebugLog[];
 
-void debug_tlb_last()
+void debug_tlb_last(void)
 {
 	int i;
 
@@ -262,4 +262,30 @@ asmlinkage void __sched test_schedule(void)
 	my_out("schedule2 SSR=%X\n", get_ssr());
 }
 
+
+// special test code for testing xmiss on page boundary
+// 4 instructions in the one packet - 16 bytes
+//
+
+extern void tst_pkg_code_start(void);
+extern void tst_pkg_code_end(void);
+typedef void (*TstPkgCode_t)(void);
+
+
+void debug_xfault_on_page_bound(void)
+{
+	TstPkgCode_t fn;
+	int csize = (u32)tst_pkg_code_end - (u32)tst_pkg_code_start;
+	u8 *ptr = (u8*)0x70000000;	
+	printk("debug_xfault_on_page_bound = %X csize = %d\n", ptr, csize);
+	csize = 8;
+
+//	memcpy((ptr + 0xFF8), (void*)tst_pkg_code_start, csize);
+//	fn = (TstPkgCode_t)(ptr + 0xFF8);
+	fn = (TstPkgCode_t)(ptr + 0x1000);
+	printk("before call\n");
+	fn();
+	printk("after call\n");
+	while (1);
+}
                                   

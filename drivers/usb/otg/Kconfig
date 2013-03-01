@@ -7,7 +7,8 @@
 comment "OTG and related infrastructure"
 
 config USB_OTG_UTILS
-	bool
+	bool "Generic OTG Utils"
+	default n
 	help
 	  Select this to make sure the build includes objects from
 	  the OTG infrastructure directory.
@@ -88,7 +89,7 @@ config NOP_USB_XCEIV
 
 config USB_MSM_OTG
 	tristate "OTG support for Qualcomm on-chip USB controller"
-	depends on (USB || USB_GADGET) && (ARCH_MSM || HEXAGON_ARCH_V2)
+	depends on (USB || USB_GADGET) && ARCH_MSM
 	select USB_OTG_UTILS
 	help
 	  Enable this to support the USB OTG transceiver on MSM chips. It

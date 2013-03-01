@@ -558,6 +558,9 @@ exc_reset:
 #define GSR_IE  30
 
 
+#if 0
+// old jonpry code
+
 exc_tlbmiss_X:
 
 // save registers
@@ -572,6 +575,8 @@ exc_tlbmiss_X:
     memd (r10 + #_R0504) = r5:4
     memd (r10 + #_R0706) = r7:6
     memd (r10 + #_R0908) = r9:8
+
+
     //Rewrite the ssr cause field to store that this was an execute fault
     r2 = ssr
     r1 = #3
@@ -613,6 +618,40 @@ exc_tlbmiss_X:
     r1 = asl(r2,#12)
 	
     jump    exc_tlb_miss_common
+
+// end of old jonpry code
+#else
+// new, more easy way
+
+exc_tlbmiss_X:    
+// save registers
+// p0-p3, r0-r3
+//
+    crswap (r10, sgp)  
+    { 
+        r0 = p3:0         
+        memd (r10 + #_R0100) = r1:0
+    }    
+    memd (r10 + #_R0302) = r3:2
+    memd (r10 + #_R0504) = r5:4
+    memd (r10 + #_R0706) = r7:6
+    memd (r10 + #_R0908) = r9:8
+
+    r1 = elr
+    r2 = ssr
+    p0 = tstbit (r2, #1)
+    if (p0) r1 = add(r1, #(4 * 4))
+
+
+    // SSR[CAUSE] = 3 to report it as an execute fault
+    r3 = #3
+    r2 = insert(r3, #8, #SSR_BIT_CAUSE)
+    ssr = r2
+
+    jump    exc_tlb_miss_common
+
+
+#endif
 
 
 exc_tlbmiss_RW:
@@ -666,18 +705,9 @@ exc_tlb_miss_common:
 
     GET_TID	r6
 
-#if 0
-    LOAD32(r3, L1PageTables)
-    r4 = #4096
-    r4 = mpyi (r6, r4)          // each L1 is 4096 bytes       
-    r3 = add (r3, r4)        // get L1 page table base for thread
-#else
-
     LOAD32(r3, L1FETCH_ADDRESS);
     r3 += asl (r6, #12)		// r2 = L1FETCH_ADDRESS + TID * 0x1000
 
-#endif    
-       
     r5 = extractu (r1, #10, #22)    // L1: r5 = index in L1 page table table
     r3 = addasl (r3, r5, #2)        
 
@@ -946,9 +976,9 @@ exc_tlb_miss_invalid:
 	/*Save flags*/ 
 	memw(r10 + #_RFLAGS) = r0; 
 	
-	LOAD32 (r0, last_exc_ssr)
-	r1 = ssr
-	memw (r0) = r1
+//	LOAD32 (r0, last_exc_ssr)
+//	r1 = ssr
+//	memw (r0) = r1
 		
 	/*set the usr mode bit and interupt enable bit in _RGSR */ 
 	r0 = #0; // r0 holds GSR
@@ -1064,15 +1094,26 @@ coresys_rte:
 	r2 = clrbit(r2,#SSR_BIT_USR);
 	r2 = clrbit(r2,#SSR_BIT_IE);	
 	if(!p0) jump 1f 
+
 	r2 = setbit(r2,#SSR_BIT_USR)
 	r0 = memw(r10 + #_RGOSP);
 	memw(r10 + #_RGOSP) = r29;
 	{ r0 = r29; r29 = r0; }
 1:
+
+
+#if 1
+	r3 = extractu (r1, #1, #GSR_IE)
+	r2 = insert (r3, #1, #SSR_BIT_IE)
+
+#else
+	// jonpry's old code
 	p0 = tstbit(r1,#GSR_IE);
 	if(!p0) jump 1f
 	r2 = setbit(r2,#SSR_BIT_IE)
 1:
+
+#endif
 	// we always set EXC bit to prevent race conditions during exit
 	//
 	r2 = setbit(r2,#SSR_BIT_EXC)

@@ -119,4 +119,16 @@ ENTRY(__vmgetregs)
 	jumpr	R31;
 
 
+// special test code for testing xmiss on page boundary
+// 4 instructions in the one packet - 16 bytes
+//
+ENTRY(tst_pkg_code_start)
+	{
+	r0.l = #0
+	r1.l = #33
+	r2 = asl (r2, #2)
+	jumpr r31	
+	}	
+ENTRY(tst_pkg_code_end)
+
 
