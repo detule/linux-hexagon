@@ -49,6 +49,15 @@ config ANDROID_INTF_ALARM_DEV
 	  elapsed realtime, and a non-wakeup alarm on the monotonic clock.
 	  Also exports the alarm interface to user-space.
 
+config ANDROID_RAM_CONSOLE
+	bool "Android RAM buffer console"
+	default y
+
+config ANDROID_RAM_CONSOLE_EARLY_INIT
+        bool "Start Android RAM console early"
+        default y
+        depends on ANDROID_RAM_CONSOLE
+
 endif # if ANDROID
 
 endmenu

@@ -71,10 +71,9 @@ static void ram_console_update(const char *s, unsigned int count)
 }
 
 
-static __attribute__((optimize("O0"))) void ram_console_write(const char *s)
+__attribute__((optimize("O0"))) void ram_console_write_size(const char *s, unsigned count)
 {
 	int rem;
-	unsigned int count = strlen(s);
 	struct ram_console_buffer *buffer = ram_console_buffer;
 
 	if (count > ram_console_buffer_size) 
@@ -107,6 +106,11 @@ static __attribute__((optimize("O0"))) void ram_console_write(const char *s)
 	}	
 }
 
+static void ram_console_write(const char *s){
+	unsigned int count = strlen(s);
+	ram_console_write_size(s,count);
+}	
+
 
 static int ram_console_init(struct ram_console_buffer *buffer,  size_t buffer_size)
 {
@@ -116,6 +120,16 @@ static int ram_console_init(struct ram_console_buffer *buffer,  size_t buffer_si
 	buffer->sig = RAM_CONSOLE_SIG;
 	buffer->start = 0;
 	buffer->size = 0;
+
+#if 1
+	char *ptr = (char*)buffer->data;
+	int count = buffer_size;
+	while (count-- > 0)
+	{
+		iowrite8(0, ptr);
+		ptr++;
+	}
+#endif
 
 	return 0;
 }

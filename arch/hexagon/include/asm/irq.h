@@ -25,7 +25,7 @@
 #ifdef CONFIG_HEXAGON_ARCH_V2
     #include "irqs-q6-8x50.h"
 #else
-    #error INT code is not present
+    #warning INT code is not present
 #endif
 
 
