@@ -570,10 +570,43 @@ exc_tlbmiss_X:
     memd (r10 + #_R0504) = r5:4
     memd (r10 + #_R0706) = r7:6
     memd (r10 + #_R0908) = r9:8
+    //Rewrite the ssr cause field to store that this was an execute fault
+    r2 = ssr
+    r1 = #3
+    r2 = insert(r1,#8,#0)
+    ssr = r2
+
+    //This fault could be do to an instruction packet crossing a page boundry
+    //In that case ELR will be wrong. This may not be the correct place to do this as 
+    //we will need to acquire the SMP lock to do this work
+
+    //Elr is the initial fault address. Elr always points to the beginning of a packet
+	//So there are no worries so long as the packet is more than 4 bytes from the page boundary
     r1 = elr
+    r2 = #0xfff
+    r3 = and(r1,r2)
+    r2 = #0xff0
+    p0 = cmp.gt(r3,r2)
+    if(!p0) jump    exc_tlb_miss_common
+
+    //At this point, this could be a double faulting instruction
+    //Check this by seeing if tlbp picks up anything
+    r2 = elr
+
+    // Make TLB HI entry
+    r2 = lsr (r2, #12)          // >> 12
+    tlbhi = r2
+    tlbp
+    r3 = tlbidx
+    //Tlbp will set the high bit if there is currently no entry
+    p0 = tstbit(r3,#31)	
+    if(p0) jump    exc_tlb_miss_common
+	
+    //Now we need to round up the badva
+    r2 = add(r2,#1)
+    r1 = asl(r2,#12)
+	
     jump    exc_tlb_miss_common
-
-
 
 
 exc_tlbmiss_RW:
@@ -864,10 +897,12 @@ exc_tlb_miss_invalid:
    r2 = and (r2, #3)  
    p0 = cmp.eq (r2, #1)
    p1 = cmp.eq (r2, #2)
+   p3 = cmp.eq (r2, #3)
    p2 = or (p0, p1)
 
    r3 = #HVM_GE_C_RPROT
    if p2 r3 = #HVM_GE_C_WPROT
+   if p3 r3 = #HVM_GE_C_XPROT
 
 
    // we are replacing cause field in SSR to emulate 
@@ -1006,25 +1041,25 @@ coresys_rte:
 	memd (r10 + #_R0100) = r1:0
 	memd (r10 + #_R0302) = r3:2
 
-//TODO: do this unless this is a kmode interrupt return
-	r0 = memw(r10 + #_RGOSP);
-	memw(r10 + #_RGOSP) = r29;
-	{ r0 = r29; r29 = r0; }
-
 //deal with gsr
 //TODO: needs to be optimized and actually work so bits can be cleared
 	r0 = p3:0
 	r1 = memw(r10 + #_RGSR);
 	r2 = ssr;
 	p0 = tstbit(r1,#GSR_USR);
+	r2 = clrbit(r2,#SSR_BIT_USR);
+	r2 = clrbit(r2,#SSR_BIT_IE);	
 	if(!p0) jump 1f 
 	r2 = setbit(r2,#SSR_BIT_USR)
+	r0 = memw(r10 + #_RGOSP);
+	memw(r10 + #_RGOSP) = r29;
+	{ r0 = r29; r29 = r0; }
 1:
 	p0 = tstbit(r1,#GSR_IE);
 	if(!p0) jump 1f
-	r2 = setbit(r2,#SSR_BIT_IE)
-	r2 = setbit(r2,#SSR_BIT_EXC) // TODO: should it be here?
+	r2 = setbit(r2,#SSR_BIT_IE) 
 1:
+	r2 = setbit(r2,#SSR_BIT_EXC) // TODO: should it be here?
 	ssr = r2;
 
 	//Restore r0,r10,flags
@@ -1065,8 +1100,8 @@ L1PageTables:
 //
     .p2align 2     // Align to 8 bytes
     .globl DebugStack
-DebugStack:
     .fill (512), 1, 0
+DebugStack:
 
 
     .p2align 2     // Align to 8 bytes
