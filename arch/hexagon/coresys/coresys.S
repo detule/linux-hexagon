@@ -581,7 +581,7 @@ exc_tlbmiss_X:
     //we will need to acquire the SMP lock to do this work
 
     //Elr is the initial fault address. Elr always points to the beginning of a packet
-	//So there are no worries so long as the packet is more than 4 bytes from the page boundary
+    //So there are no worries so long as the packet is more than 12 bytes from the page boundary
     r1 = elr
     r2 = #0xfff
     r3 = and(r1,r2)
@@ -594,11 +594,15 @@ exc_tlbmiss_X:
     r2 = elr
 
     // Make TLB HI entry
+    //TODO: add ASID
     r2 = lsr (r2, #12)          // >> 12
     tlbhi = r2
     tlbp
     r3 = tlbidx
     //Tlbp will set the high bit if there is currently no entry
+    //TODO: even if we get a valid index, we must check that that TLB_LO
+    //has X permission, and if this is a usermode fault, that the entry
+    //has user mode permissions
     p0 = tstbit(r3,#31)	
     if(p0) jump    exc_tlb_miss_common
 	
