@@ -165,6 +165,24 @@ void __init_refok free_initmem(void)
 {
 }
 
+static inline int free_area(unsigned long pfn, unsigned long end, char *s)
+{
+	unsigned int pages = 0, size = (end - pfn) << (PAGE_SHIFT - 10);
+
+	for (; pfn < end; pfn++) {
+		struct page *page = pfn_to_page(pfn);
+		ClearPageReserved(page);
+		init_page_count(page);
+		__free_page(page);
+		pages++;
+	}
+
+	if (size && s)
+		printk(KERN_INFO "Freeing %s memory: %dK\n", s, size);
+
+	return pages;
+}
+
 /*
  * free_initrd_mem - frees...  initrd memory.
  * @start - start of init memory
@@ -176,6 +194,11 @@ void __init_refok free_initmem(void)
  */
 void free_initrd_mem(unsigned long start, unsigned long end)
 {
+
+//	poison_init_mem((void *)start, PAGE_ALIGN(end) - start);
+	totalram_pages += free_area(PFN_DOWN(__pa(start)),
+				    PFN_UP(__pa(end)),
+				    "initrd");
 }
 
 void sync_icache_dcache(pte_t pte)
