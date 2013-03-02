@@ -1040,7 +1040,9 @@ exc_tlb_miss_invalid:
 	r0 = #1
 	memw(r10+#_RGUARD) = r0;
 
-       /*Restore r0,r10*/ 
+       /*Restore r0,r10,flags*/
+	r0 = memw(r10+#_RFLAGS);
+	p3:0 = r0; 
 	r1:0 = memd(r10+#_R0100); 
 	crswap (r10, sgp)
     .endm
@@ -1082,7 +1084,7 @@ coresys_clear_guard:
     crswap (r10, sgp)
     jumpr r31
 
-// ret in r0,r1,r2,r3,r4 only r31,r5 can be clobbered!
+// ret in r0,r1,r2,r3 only r31 can be clobbered!
 .global coresys_getregs
 coresys_getregs:
     crswap (r10, sgp)
@@ -1090,7 +1092,6 @@ coresys_getregs:
 	r1 = memw(r10+#_RGSR);
 	r2 = memw(r10+#_RGOSP);
 	r3 = memw(r10+#_RGBADVA);
-	r4 = memw(r10+#_RFLAGS);
 	//Restore
     crswap (r10, sgp)
 	jumpr lr
@@ -1105,7 +1106,6 @@ coresys_setregs:
 	memw(r10 + #_RGSR) = r1;
 	memw(r10 + #_RGOSP) = r2;
 	badva = r3
-	memw(r10 + #_RFLAGS) = r4;
 
 	//Restore
     crswap (r10, sgp)
@@ -1122,6 +1122,7 @@ coresys_rte:
 //deal with gsr
 //TODO: needs to be optimized and actually work so bits can be cleared
 	r0 = p3:0
+	memw(r10+#_RFLAGS)=r0
 	r1 = memw(r10 + #_RGSR);
 
 	r2 = ssr;

@@ -159,7 +159,6 @@
 		R1.H = #HI(CHandler); \
 	} \
 	{ \
-		memw(R29 + #_PT_FLAGS) = R4; \
 		jump event_dispatch; \
 	}
 
@@ -261,7 +260,6 @@ restore_all:
 	/*  R29 here should already be pointing at pt_regs  */
 	R1:0 = memd(R29 + #_PT_ER_VMEL);
 	R3:2 = memd(R29 + #_PT_ER_VMPSP);
-	R4 = memw(R29 + #_PT_FLAGS);
 
 	call coresys_setregs;
 

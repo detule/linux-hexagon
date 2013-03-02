@@ -180,8 +180,6 @@ struct pt_regs {
 		};
 		long long int r3130;
 	};
-	unsigned long flags;
-	unsigned long foo;
 	/* VM dispatch pushes event record onto stack - we can build on it */
 	struct hvm_event_record hvmer;
 };
