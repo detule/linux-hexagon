@@ -121,7 +121,7 @@ struct ram_console_port {
 };
 
 static struct ram_console_port ram_console_port;
-
+ 
 static int ram_console_tty_open(struct tty_struct *tty, struct file *filp)
 {
 	tty->driver_data = &ram_console_port;
@@ -142,14 +142,14 @@ static int ram_console_tty_write(struct tty_struct *tty,
 		const unsigned char *buf, int count)
 {
 	struct ram_console_port *rcp = tty->driver_data;
-	printk("%s\n",__func__);
+//	printk("%s\n",__func__);
 
 	/* exclusive use of tpk_printk within this tty */
 	mutex_lock(&rcp->port_write_mutex);
 	ram_console_write(0,buf, count);
 	mutex_unlock(&rcp->port_write_mutex);
 
-	return 0;
+	return count;
 }
 
 static int ram_console_tty_write_room(struct tty_struct *tty)

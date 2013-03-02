@@ -132,20 +132,18 @@ static inline int __atomic_add_unless(atomic_t *v, int a, int u)
 		"	{"
 		"		p3 = cmp.eq(%0, %4);"
 		"		if (p3.new) jump:nt 2f;"
-		"		%0 = add(%0, %3);"
-		"		%1 = #0;"
+		"		%1 = add(%0, %3);"
 		"	}"
-		"	memw_locked(%2, p3) = %0;"
+		"	memw_locked(%2, p3) = %1;"
 		"	{"
 		"		if !p3 jump 1b;"
-		"		%1 = #1;"
 		"	}"
 		"2:"
 		: "=&r" (__oldval), "=&r" (output)
 		: "r" (v), "r" (a), "r" (u)
 		: "memory", "p3"
 	);
-	return output;
+	return __oldval;
 }
 
 #define atomic_inc_not_zero(v) atomic_add_unless((v), 1, 0)
