@@ -63,7 +63,7 @@ int __init scr_fb_console_init(void);
 #else
 
 // HTC TouchPad
-#define PLAT_RAM_SIZE    	(20 * 1024 * 1024)
+#define PLAT_RAM_SIZE    	(36 * 1024 * 1024)
 
 
 #endif
@@ -273,8 +273,8 @@ extern u32 __initrd_size;
 
 void __init setup_arch_memory(void)
 {
-	int i, dmaptestart, bootmap_size;
-	u32 numdma;
+	int i, ptestart, bootmap_size;
+	u32 numpte;
 	u32 *pte = (u32 *) &swapper_pg_dir[0];
 
 
@@ -342,18 +342,35 @@ void __init setup_arch_memory(void)
 	{
 		my_out("boot params are not present %08X!\n", __initrd_sign);
 	}
-	
 
-	numdma = DMA_RESERVED_BYTES >> 22;  // num of 4M blocks
-	dmaptestart = (hexagon_coherent_pool_start >> 22);  // start index in the page table (VA)
-	for (i = 0; i < numdma; i++)
+	//Setup the kernel > 16MB maps
+	numpte = (platform_ram_size - DMA_RESERVED_BYTES - 16*1024*1024) >> 22;  // num of 4M blocks
+	ptestart = (((unsigned)__va(PFN_PHYS(bootmem_start_pfn)) + 16*1024*1024) >> 22);  // start index in the page table (VA)
+	for (i = 0; i < numpte; i++)
 	{
-		pte[dmaptestart + i] = ((PFN_PHYS(bootmem_dma_pfn + i) & __HVM_PTE_PGMASK_4MB)
+		//Beginning of 4MB sections
+		if(i>=numpte - numpte%4)
+			pte[ptestart + i] = (((unsigned)(PFN_PHYS(bootmem_start_pfn + i) + 16*1024*1024) & __HVM_PTE_PGMASK_4MB)
+				| __HVM_PTE_R | __HVM_PTE_W | __HVM_PTE_X
+				| __HEXAGON_C_WB_L2 << 6 | __HVM_PDE_S_4MB);
+		//16MB sections
+		else
+			pte[ptestart + i] = (((PFN_PHYS(bootmem_start_pfn + i) + 16*1024*1024) & __HVM_PTE_PGMASK_16MB)
+				| __HVM_PTE_R | __HVM_PTE_W | __HVM_PTE_X
+				| __HEXAGON_C_WB_L2 << 6 | __HVM_PDE_S_16MB);
+	}	 
+	
+	//Setup the DMA mapping
+	numpte = DMA_RESERVED_BYTES >> 22;  // num of 4M blocks
+	ptestart = (hexagon_coherent_pool_start >> 22);  // start index in the page table (VA)
+	for (i = 0; i < numpte; i++)
+	{
+		pte[ptestart + i] = ((PFN_PHYS(bootmem_dma_pfn + i) & __HVM_PTE_PGMASK_4MB)
 				| __HVM_PTE_R | __HVM_PTE_W | __HVM_PTE_X
 				| __HEXAGON_C_UNC << 6 | __HVM_PDE_S_4MB);
 	}	        	
 
-	my_out("numdma= %d %X %08X\n", numdma, dmaptestart, pte[0xC1000000 >> 22]);
+	my_out("numdma= %d %X %08X\n", numpte, ptestart, pte[0xC1000000 >> 22]);
 
         	
 #ifdef CONFIG_BLK_DEV_INITRD	
