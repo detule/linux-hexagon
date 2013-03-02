@@ -24,6 +24,7 @@
 #include <linux/bootmem.h>
 #include <asm/atomic.h>
 #include <linux/highmem.h>
+#include <linux/sizes.h>
 #include <asm/tlb.h>
 #include <asm/sections.h>
 #include <asm/vm_mmu.h>
@@ -58,7 +59,7 @@ int __init scr_fb_console_init(void);
 
 // HTC LEO
 //#define PLAT_RAM_SIZE    	(24 * 1024 * 1024)
-#define PLAT_RAM_SIZE    	(20 * 1024 * 1024)
+#define PLAT_RAM_SIZE    	(128 * 1024 * 1024)
 
 #else
 
@@ -274,7 +275,8 @@ extern u32 __initrd_size;
 void __init setup_arch_memory(void)
 {
 	int i, ptestart, bootmap_size;
-	u32 numpte;
+	u32 numpte, numpte4M, numpte16M;
+	u32 start_ext_ram_pa, start_ext_ram_pfn, ext_ram_pfns;
 	u32 *pte = (u32 *) &swapper_pg_dir[0];
 
 
@@ -314,7 +316,7 @@ void __init setup_arch_memory(void)
 //
 
 	hexagon_coherent_pool_size  = (size_t)DMA_RESERVED_BYTES;
-	hexagon_coherent_pool_start = __va(PFN_PHYS(bootmem_dma_pfn));
+	hexagon_coherent_pool_start = (unsigned long)__va(PFN_PHYS(bootmem_dma_pfn));
 
 	min_low_pfn = bootmem_start_pfn;
 	max_low_pfn = bootmem_dma_pfn; 
@@ -343,22 +345,59 @@ void __init setup_arch_memory(void)
 		my_out("boot params are not present %08X!\n", __initrd_sign);
 	}
 
-	//Setup the kernel > 16MB maps
-	numpte = (platform_ram_size - DMA_RESERVED_BYTES - 16*1024*1024) >> 22;  // num of 4M blocks
-	ptestart = (((unsigned)__va(PFN_PHYS(bootmem_start_pfn)) + 16*1024*1024) >> 22);  // start index in the page table (VA)
-	for (i = 0; i < numpte; i++)
+
+	// fill extended RAM page tables
+	// the first 16M of ram are mapped by pernament 16M entry
+	// the rest is placed into replacement TLB
+	// we are using 16M entries as much as possible and cover the rest by 4M
+	//
+	start_ext_ram_pfn = bootmem_start_pfn + PFN_DOWN(SZ_16M);
+	ext_ram_pfns = bootmem_dma_pfn - start_ext_ram_pfn;
+
+	numpte4M =  ext_ram_pfns / PFN_DOWN(SZ_4M);
+	numpte16M = numpte4M / 4;  // 4 is 16M/4M
+	numpte4M  = numpte4M % 4;
+	
+	printk("EXT RAM: pfns=%d: 4M=%d 16M=%d\n", ext_ram_pfns, numpte4M, numpte16M);
+
+	start_ext_ram_pa = PFN_PHYS(start_ext_ram_pfn);
+	ptestart = ((u32)__va(start_ext_ram_pa)) >> 22;
+
+	for (i = 0; i < numpte16M; i++)
 	{
-		//Beginning of 4MB sections
-		if(i>=numpte - numpte%4)
-			pte[ptestart + i] = (((unsigned)(PFN_PHYS(bootmem_start_pfn + i) + 16*1024*1024) & __HVM_PTE_PGMASK_4MB)
-				| __HVM_PTE_R | __HVM_PTE_W | __HVM_PTE_X
-				| __HEXAGON_C_WB_L2 << 6 | __HVM_PDE_S_4MB);
-		//16MB sections
-		else
-			pte[ptestart + i] = (((PFN_PHYS(bootmem_start_pfn + i) + 16*1024*1024) & __HVM_PTE_PGMASK_16MB)
-				| __HVM_PTE_R | __HVM_PTE_W | __HVM_PTE_X
-				| __HEXAGON_C_WB_L2 << 6 | __HVM_PDE_S_16MB);
-	}	 
+		pte[ptestart + 4 * i] = (((start_ext_ram_pa + SZ_16M * i) & __HVM_PTE_PGMASK_16MB)
+			| __HVM_PTE_R | __HVM_PTE_W | __HVM_PTE_X
+			| __HEXAGON_C_WB_L2 << 6 | __HVM_PDE_S_16MB);
+
+		// for 16M entry it should be repeated 4 times in page table
+		//
+		pte[ptestart + 4 * i + 1] = pte[ptestart + 4 * i];
+		pte[ptestart + 4 * i + 2] = pte[ptestart + 4 * i];
+		pte[ptestart + 4 * i + 3] = pte[ptestart + 4 * i];
+
+		printk("FILL16M: %d %08X %X\n", i, pte[ptestart + 4 * i], start_ext_ram_pa + SZ_16M * i);
+	}
+	ptestart += numpte16M * 4;
+	start_ext_ram_pa += SZ_16M * numpte16M;
+
+	for (i = 0; i < numpte4M; i++)
+	{
+		pte[ptestart + i] = (((start_ext_ram_pa + SZ_4M * i) & __HVM_PTE_PGMASK_4MB)
+			| __HVM_PTE_R | __HVM_PTE_W | __HVM_PTE_X
+			| __HEXAGON_C_WB_L2 << 6 | __HVM_PDE_S_4MB);
+
+		printk("FILL4M:  %d %08X %X\n", i, pte[ptestart + i], start_ext_ram_pa + SZ_4M * i);
+	}
+	ptestart += numpte4M;
+        start_ext_ram_pa += SZ_4M * numpte4M;
+
+	
+	if (ptestart != (hexagon_coherent_pool_start >> 22) || start_ext_ram_pa != PFN_PHYS(bootmem_dma_pfn))
+	{
+		my_out("Bad ext ram mapping. HALT.\r\n");
+		BUG();
+	}
+
 	
 	//Setup the DMA mapping
 	numpte = DMA_RESERVED_BYTES >> 22;  // num of 4M blocks
