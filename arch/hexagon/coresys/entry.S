@@ -183,6 +183,7 @@
 
 event_dispatch:
 	save_pt_regs()
+	call	coresys_clear_guard
 
 	callr	r1
 

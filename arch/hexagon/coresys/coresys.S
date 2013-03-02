@@ -1033,6 +1033,13 @@ exc_tlb_miss_invalid:
 	ssr = r0
 	isync
 
+	//Check the fault guard, and then set the guard
+	r0 = memw(r10+#_RGUARD)
+	p0 = cmp.ge(r0,#1)
+	if(p0) jump guard_debug
+	r0 = #1
+	memw(r10+#_RGUARD) = r0;
+
        /*Restore r0,r10*/ 
 	r1:0 = memd(r10+#_R0100); 
 	crswap (r10, sgp)
@@ -1054,14 +1061,26 @@ exc_trap:
 	EXCEPTION_ENTER_HEAD;
 	jump _K_enter_trap0
 
-
-
 ENTRY(int_debug)
     LOAD32(r29, DebugStack)
     call debug_intr_out
     jump  .
 
+ENTRY(guard_debug)
+    LOAD32(r29, DebugStack)
+    r0 = elr
+    r1 = r29
+    call debug_guard_out
+    jump  .
 
+//Anything >r1
+.global coresys_clear_guard
+coresys_clear_guard:
+    crswap (r10, sgp)
+    r3 = #0
+    memw(r10 + #_RGUARD) = r3
+    crswap (r10, sgp)
+    jumpr r31
 
 // ret in r0,r1,r2,r3,r4 only r31,r5 can be clobbered!
 .global coresys_getregs

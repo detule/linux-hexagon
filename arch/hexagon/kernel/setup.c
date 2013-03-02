@@ -155,7 +155,13 @@ static int show_cpuinfo(struct seq_file *m, void *v)
 	int cpu = (unsigned long) v - 1;
 
 	seq_printf(m, "processor\t: %d\n", cpu);
-	seq_printf(m, "model name\t: Hexagon Virtual Machine\n");
+#ifdef CONFIG_HEXAGON_ARCH_V2
+	seq_printf(m, "model name\t: QDSP6V2\n");
+#elif defined(CONFIG_HEXAGON_ARCH_V3)
+	seq_printf(m, "model name\t: QDSP6V3\n");
+#else
+	#error
+#endif
 	seq_printf(m, "BogoMips\t: %lu.%02lu\n",
 		(loops_per_jiffy * HZ) / 500000,
 		((loops_per_jiffy * HZ) / 5000) % 100);

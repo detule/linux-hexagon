@@ -233,6 +233,13 @@ void debug_intr_out(uint32_t elr, uint32_t lr)
 	my_out("  ELR='%s' LR='%s'\r\n", symBuf1, symBuf2);
 }
 
+void debug_guard_out(uint32_t elr, uint32_t r29)
+{
+	my_out("GUARD: ELR=%08X R29=%08X SSR=%X\r\n", elr, r29, get_ssr());
+	sprint_symbol(symBuf1, elr);
+	my_out("  ELR='%s'\r\n", symBuf1);
+}
+
 
 //void debug_tlbmiss_invalid(uint32_t elr, uint32_t badva, uint32_t lr)
 void debug_tlbmiss_invalid(uint32_t elr, uint32_t badva, uint32_t lr, u32 indx, u32 tid)
