@@ -123,7 +123,7 @@ static int ram_console_init(struct ram_console_buffer *buffer,  size_t buffer_si
 
 #if 1
 	char *ptr = (char*)buffer->data;
-	int count = buffer_size;
+	int count = ram_console_buffer_size;
 	while (count-- > 0)
 	{
 		iowrite8(0, ptr);

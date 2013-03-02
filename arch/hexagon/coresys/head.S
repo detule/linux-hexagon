@@ -268,13 +268,6 @@ __head_s_vaddr_target:
 	r0 = #TLBUSG_INDENTITY
 	TLB_ENTRY_SET r0, r2, r2 // idx, lo, hi
 
-
-	/*  Go ahead and install the trap0 return so angel calls work  */
-	// CotullaTODO:
-	//r0.h = #hi(_K_provisional_vec)
-	//r0.l = #lo(_K_provisional_vec)
-	//call __vmsetvec
-
 	/*
 	 * OK, at this point we should start to be much more careful,
 	 * we're going to enter C code and start touching memory
@@ -352,7 +345,7 @@ if (p0) jump 1b
 1:
 jump 1b
 #endif
-	call debug_tlb_miss_fetch
+//	call debug_tlb_miss_fetch
 
 	/* Time to make the doughnuts and drink Kefir.   */
 	call start_kernel		
