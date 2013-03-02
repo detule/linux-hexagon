@@ -551,6 +551,9 @@ exc_reset:
 #define _RGOSP  40
 #define _RGSR   44
 #define _RFLAGS 48
+#define _RGUARD 52
+#define _RGBADVA 56
+#define _RGELR  60
 
 #define GSR_CAUSE	0
 
@@ -682,7 +685,6 @@ exc_tlb_miss_common:
     r6 = add (r6, #1)
     memw(r3) = r6
 
-
 // uncomment to have a log of TLB miss calls
 //
 #if 0
@@ -717,14 +719,12 @@ exc_tlb_miss_common:
     p0 = cmp.eq (r5, #__HVM_PDE_S_INVALID)  
     if p0 jump exc_tlb_miss_invalid
 
-
 // Only one level for 4M and 16M entries
 //
     p0 = cmp.eq (r5, #__HVM_PDE_S_4MB)  
     if p0 jump exc_tlb_miss_process
     p0 = cmp.eq (r5, #__HVM_PDE_S_16MB)  
     if p0 jump exc_tlb_miss_process
-    
 
 // L2 table fetch:
 // map L2 page table according to L1 entry
@@ -1015,8 +1015,25 @@ exc_tlb_miss_invalid:
 1:
 	memw(r10 + #_RGOSP) = r1; 
 	memw(r10 + #_RGSR) = r0;
+	r0 = elr
+	memw(r10 + #_RGELR) = r0;
+	r0 = badva
+	memw(r10 + #_RGBADVA) = r0;
 
-	/*Restore r0,r10*/ 
+	/* disable interrupts and exception mode
+	// before calling exception handler
+	// not we need also clear USR bit 
+	// otherwise USR=1 EXC=0 IE=0 will cause SSR access fault
+	*/
+
+	r0 = ssr
+	r0 = clrbit(r0,#SSR_BIT_IE)
+	r0 = clrbit(r0,#SSR_BIT_USR)
+	r0 = clrbit(r0,#SSR_BIT_EXC)
+	ssr = r0
+	isync
+
+       /*Restore r0,r10*/ 
 	r1:0 = memd(r10+#_R0100); 
 	crswap (r10, sgp)
     .endm
@@ -1050,10 +1067,10 @@ ENTRY(int_debug)
 .global coresys_getregs
 coresys_getregs:
     crswap (r10, sgp)
-	r0 = elr;
+	r0 = memw(r10+#_RGELR);
 	r1 = memw(r10+#_RGSR);
 	r2 = memw(r10+#_RGOSP);
-	r3 = badva;
+	r3 = memw(r10+#_RGBADVA);
 	r4 = memw(r10+#_RFLAGS);
 	//Restore
     crswap (r10, sgp)

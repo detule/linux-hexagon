@@ -184,18 +184,6 @@
 event_dispatch:
 	save_pt_regs()
 
-	// disable interrupts and exception mode
-	// before calling exception handler
-	// not we need also clear USR bit 
-	// otherwise USR=1 EXC=0 IE=0 will cause SSR access fault
-	//
-	r3 = ssr
-	r3 = clrbit(r3, #SSR_BIT_IE)
-	r3 = clrbit(r3, #SSR_BIT_EXC)
-	r3 = clrbit(r3, #SSR_BIT_USR)
-	ssr = r3
-	isync
-
 	callr	r1
 
 	// enable exception mode.
