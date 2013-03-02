@@ -373,6 +373,19 @@ void __init setup_arch_memory(void)
 	my_out("numdma= %d %X %08X\n", numpte, ptestart, pte[0xC1000000 >> 22]);
 
         	
+	// CotullaTODO: clear some parts of page table ?
+
+	/*
+	 * Free all the memory that wasn't taken up by the bootmap, the DMA
+	 * reserve, or kernel itself.
+	 */
+
+	// we free only available ram memory between free+bootmapsize and dma
+	// note that initial state of bootmem is reserved
+	//
+	free_bootmem(PFN_PHYS(bootmem_free_pfn) + bootmap_size,
+		     PFN_PHYS(bootmem_dma_pfn - bootmem_free_pfn) - bootmap_size);
+
 #ifdef CONFIG_BLK_DEV_INITRD	
 	if (__initrd_sign == BOOTPARAM_SIGN && __initrd_start && __initrd_size) {
 		if (__initrd_start + __initrd_size <= (max_low_pfn << PAGE_SHIFT)) {
@@ -391,19 +404,6 @@ void __init setup_arch_memory(void)
 	}
 #endif
 
-
-	// CotullaTODO: clear some parts of page table ?
-
-	/*
-	 * Free all the memory that wasn't taken up by the bootmap, the DMA
-	 * reserve, or kernel itself.
-	 */
-
-	// we free only available ram memory between free+bootmapsize and dma
-	// note that initial state of bootmem is reserved
-	//
-	free_bootmem(PFN_PHYS(bootmem_free_pfn) + bootmap_size,
-		     PFN_PHYS(bootmem_dma_pfn - bootmem_free_pfn) - bootmap_size);
 
 	/*
 	 *  The bootmem allocator seemingly just lives to feed memory
