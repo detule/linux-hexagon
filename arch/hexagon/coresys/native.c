@@ -92,12 +92,14 @@ long __vmcache(enum VM_CACHE_OPS op, unsigned long addr, unsigned long len)
 
 
 extern void coresys_newmap(u32 pte_base);
+extern void coresys_clear_tlb_replace();
 
 
 long __vmnewmap(void * base)
 {
 	printk("++++SET NEW MAP++++ %08X\n", (u32)base);
 	coresys_newmap((u32)base);
+	coresys_clear_tlb_replace();
 	return 0;	
 }
 
@@ -236,6 +238,13 @@ void debug_intr_out(uint32_t elr, uint32_t lr)
 void debug_guard_out(uint32_t elr, uint32_t r29)
 {
 	my_out("GUARD: ELR=%08X R29=%08X SSR=%X\r\n", elr, r29, get_ssr());
+	sprint_symbol(symBuf1, elr);
+	my_out("  ELR='%s'\r\n", symBuf1);
+}
+
+void debug_trap1_out(uint32_t trap, uint32_t elr)
+{
+	my_out("GUARD: ELR=%08X TRAP=%08X SSR=%X\r\n", elr, trap, get_ssr());
 	sprint_symbol(symBuf1, elr);
 	my_out("  ELR='%s'\r\n", symBuf1);
 }
