@@ -71,11 +71,8 @@
 #define L2FETCH_TLB_HI      TLB_MAKE_HI(TLB_ADDR(L2FETCH_ADDRESS), 1, 0)  // global = 1, ASID = 0
 #define L2FETCH_TLB_LO      TLB_MAKE_LO(0, TLB_SIZE_4K, TLB_L1WB_L2C, TLB_R) // without actual PA address
 
-
- // __CPUINIT
-.section ".coresys", "ax"
-
-
+//	__CPUINIT
+	.section	".coresys", "ax"
 
 ENTRY(_SW_MMU_START)
 
@@ -340,7 +337,9 @@ ENTRY(get_miss_count)
 
 
 
-
+// This function must not use stack
+// because called from trap1 handler directly
+//
 ENTRY(coresys_clear_tlb_replace)
 // clear replacement tlb entries
     r0 = #TLBUSG_REPLACE_MIN
@@ -413,11 +412,31 @@ ENTRY(coresys_user_test)
     r0 = ssr
     r1 = #1 
     r0 = insert (r1, #3, #16)
-    ssr = r0
+    r0 = #0
+//    ssr = r0
 
-    LOAD32(r0, 0xF0300000)	// +10
+    LOAD32(r0, 0xF1000000)	// +10
     r1 = memw(r0)               // +18
-    memw(r0) = r3
+    memw(r0) = r3		// +1C
+
+
+// TLB entry S=0, G=1
+//
+// User mode without RTE, TLB_RWX - no fault
+// User mode without RTE, TLB_R   - read OK, write FAIL, SSR=C30023
+// User mode without RTE, TLB_WX  - write OK, read FAIL, SSR=C30022
+//
+// TLB entry S=1, G=1
+//
+// User mode without RTE, TLB_R   - read OK, write FAIL, SSR=C30023 
+// Supermode without RTE, TLB_R   - no fault
+//
+// TLB entry S=0, G=1
+// Supermode without RTE, TLB_R   - no fault
+//
+// TLB entry S=1, G=1
+// Supermode without RTE, TLB_R   - 
+//
 
     jump .
 
@@ -546,10 +565,6 @@ exc_reset:
 //    call    thread_start
     jump    .
 
-#define GSR_CAUSE	0
-
-#define GSR_USR 31
-#define GSR_IE  30
 
 
 #if 1
@@ -1130,64 +1145,6 @@ coresys_setregs:
 	jumpr lr
 
 
-// r29 stack, must restore to gosp
-.global coresys_rte
-coresys_rte:
-    crswap (r10, sgp)
-	memd (r10 + #_R0100) = r1:0
-	memd (r10 + #_R0302) = r3:2
-	r0 = p3:0
-	memw(r10+#_RFLAGS)=r0
-
-//TODO: Ensure that atomic operation in progress at exception time will fail
-#if 0
-	r0 = memw_locked(r29)
-	memw_locked(r29,p0) = r0 
-#endif
-//deal with gsr
-//TODO: needs to be optimized and actually work so bits can be cleared
-
-	r1 = memw(r10 + #_RGSR);
-
-	r2 = ssr;
-
-	p0 = tstbit(r1,#GSR_USR);
-	r2 = clrbit(r2,#SSR_BIT_USR);
-	r2 = clrbit(r2,#SSR_BIT_IE);	
-	if(!p0) jump 1f 
-
-	r2 = setbit(r2,#SSR_BIT_USR)
-	r0 = memw(r10 + #_RGOSP);
-	memw(r10 + #_RGOSP) = r29;
-	{ r0 = r29; r29 = r0; }
-1:
-
-
-#if 1
-	r3 = extractu (r1, #1, #GSR_IE)
-	r2 = insert (r3, #1, #SSR_BIT_IE)
-
-#else
-	// jonpry's old code
-	p0 = tstbit(r1,#GSR_IE);
-	if(!p0) jump 1f
-	r2 = setbit(r2,#SSR_BIT_IE)
-1:
-
-#endif
-	// we always set EXC bit to prevent race conditions during exit
-	//
-	r2 = setbit(r2,#SSR_BIT_EXC)
-	ssr = r2;
-	isync
-
-	//Restore r0,r10,flags
-	r0 = memw(r10+#_RFLAGS);
-	p3:0 = r0
-	r3:2 = memd(r10+#_R0302);
-	r1:0 = memd(r10+#_R0100);
-    crswap (r10, sgp)
-	rte
 
 .global foo
 foo:

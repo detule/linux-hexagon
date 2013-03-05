@@ -914,6 +914,12 @@ copy_one_pte(struct mm_struct *dst_mm, struct mm_struct *src_mm,
 			rss[MM_FILEPAGES]++;
 	}
 
+// Cotulla:
+	if (addr >= 0x1F5000 && addr < 0x1F5000 + 0x1000)
+	{
+//		printk("FORK: %X VMF=%X SVAL=%X DVAL=%X\n", addr, vm_flags, pte_val(*src_pte), pte_val(pte));
+	}	
+
 out_set_pte:
 	set_pte_at(dst_mm, addr, dst_pte, pte);
 	return 0;

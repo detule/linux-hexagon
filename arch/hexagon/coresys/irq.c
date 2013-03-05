@@ -35,23 +35,24 @@
 // from mach-msm/SIRC.c
 extern void msm_init_sirc(void);
 
-extern u32 coresys_int_pending(void);
-extern void coresys_int_gtoggle(int state);
-extern void coresys_int_ltoggle(int state);
-extern void coresys_int_cfg(int intr, int cfg);
+//extern u32 coresys_int_pending(void);
+//extern void __my_int_ltoggle(int state);
 
-extern void coresys_int_raise(int intr);
-extern void coresys_int_enable(int intr);
-extern void coresys_int_disable(int intr);
-extern void coresys_int_done(int intr);
-extern void coresys_int_init(void);
-extern void coresys_int_settype(int intr, int v);
-extern void coresys_int_setpolarity(int intr, int v);
+extern void __my_int_gtoggle(int state);
+extern void __my_int_cfg(int intr, int cfg);
+
+extern void __my_int_raise(int intr);
+extern void __my_int_enable(int intr);
+extern void __my_int_disable(int intr);
+extern void __my_int_done(int intr);
+extern void __my_int_init(void);
+extern void __my_int_settype(int intr, int v);
+extern void __my_int_setpol(int intr, int v);
 
 
 static void mask_irq_num(unsigned int irq)
 {
-	coresys_int_disable(irq);		
+	__my_int_disable(irq);		
 }
 
 
@@ -59,27 +60,18 @@ static void qdsp6_irq_mask(struct irq_data *d)
 {                            	
 	DBG("mask %d\n", d->irq);
 	mask_irq_num(d->irq);
-
-//	void __iomem *reg = VIC_INT_ENCLEAR0 + ((d->irq & 32) ? 4 : 0);
-//	writel(1 << (d->irq & 31), reg);
 }
 
 static void qdsp6_irq_unmask(struct irq_data *d)
 {
 	DBG("unmask %d\n", d->irq);
-	coresys_int_enable(d->irq);
-
-//	void __iomem *reg = VIC_INT_ENSET0 + ((d->irq & 32) ? 4 : 0);
-//	writel(1 << (d->irq & 31), reg);
+	__my_int_enable(d->irq);
 }
 
 static void qdsp6_irq_ack(struct irq_data *d)
 {
 	if (d->irq != 3) DBG("done %d\n", d->irq);
-	coresys_int_done(d->irq);
-
-//	void __iomem *reg = VIC_INT_CLEAR0 + ((d->irq & 32) ? 4 : 0);
-//	writel(1 << (d->irq & 31), reg);
+	__my_int_done(d->irq);
 }
 
 
@@ -90,21 +82,21 @@ static int qdsp6_irq_set_type(struct irq_data *d, unsigned int flow_type)
 	DBG("set_type: %d %X\n", vidx, flow_type);
 	if (flow_type & (IRQF_TRIGGER_FALLING | IRQF_TRIGGER_LOW))
 	{   		
-		coresys_int_settype(vidx, 0);
+		__my_int_settype(vidx, 0);
 	}
 	if (flow_type & (IRQF_TRIGGER_RISING | IRQF_TRIGGER_HIGH))
 	{
-		coresys_int_settype(vidx, 1);
+		__my_int_settype(vidx, 1);
 	}
 
 	if (flow_type & (IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING)) 
 	{
-		coresys_int_setpolarity(vidx, 1);
+		__my_int_setpol(vidx, 1);
 		__irq_set_handler_locked(d->irq, handle_edge_irq);
 	}
 	if (flow_type & (IRQF_TRIGGER_HIGH | IRQF_TRIGGER_LOW)) 
 	{
-		coresys_int_setpolarity(vidx, 0);
+		__my_int_setpol(vidx, 0);
 		__irq_set_handler_locked(d->irq, handle_level_irq);
 	}
 	return 0;
@@ -117,7 +109,7 @@ static void qdsp6_irq_eoi(struct irq_data *d)
 	int vidx = (d->irq & 31);
 
 	if (vidx != 3) DBG("eoi %d\n", d->irq);
-	coresys_int_done(vidx);
+	__my_int_done(vidx);
 }
 
 
@@ -152,25 +144,25 @@ static void qdsp6_intr_test()
 
 	printk("test 0!\n");
 
-//	coresys_int_cfg(4, 0x3F);
-	coresys_int_cfg(3, 0x3F);
+//	__my_int_cfg(4, 0x3F);
+	__my_int_cfg(3, 0x3F);
 
 	printk("test 000!\n");
 
-//	coresys_int_raise(4);
+//	__my_int_raise(4);
 
 	printk("test 1!\n");
 
-//	coresys_int_enable(4);
-	coresys_int_enable(3);
+//	__my_int_enable(4);
+	__my_int_enable(3);
 
 	printk("test 2!\n");
 
-	coresys_int_ltoggle(1);
+//	__my_int_ltoggle(1);
 
 	printk("test 3!\n");
 
-	coresys_int_gtoggle(1); 
+	__my_int_gtoggle(1); 
        
 	printk("INTR test done!\n");
 	while (1);
@@ -186,12 +178,12 @@ void __init init_IRQ(void)
 
 
 	printk("+init_IRQ()\n");
-	coresys_int_init();
+	__my_int_init();
 
 	for (irq = 0; irq < HEXAGON_CPUINTS; irq++) 
 	{
 		mask_irq_num(irq);         	
-		coresys_int_cfg(irq, 0x3F);
+		__my_int_cfg(irq, 0x3F);
 
 		irq_set_chip_and_handler(irq, &qdsp6_irq_chip, handle_fasteoi_irq);
 //		irq_set_chip_and_handler(irq, &qdsp6_irq_chip, handle_level_irq);
@@ -204,7 +196,7 @@ void __init init_IRQ(void)
     	
 
 //	qdsp6_intr_test();	
-	coresys_int_gtoggle(1); 
+	__my_int_gtoggle(1); 
 
 	printk("-init_IRQ()\n");
 }

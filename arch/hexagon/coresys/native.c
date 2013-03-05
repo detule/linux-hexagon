@@ -21,87 +21,27 @@
 #include <linux/mm.h>
 #include <linux/module.h>
 #include <linux/kallsyms.h>
+#include <linux/sched.h>
+
 #include <asm/cacheflush.h>
 #include <asm/hexagon_vm.h>
+
 #include "native_defs.h"
 #include "tlb_usage.h"
 
 
-
-#define spanlines(start, end) \
-	(((end - (start & ~(LINESIZE - 1))) >> LINEBITS) + 1)
-
-
-// Added function according to Hexagon Virtual Machine specifications
-// for IDSYNC cache opcode (page 30)
-// Not clear why it must flush and invalidate DCache instead of just flush...
-//
-void hexagon_idsync_range(unsigned long start, unsigned long size)
-{
-	unsigned long end = start + size;
-	unsigned long lines = spanlines(start, end-1);
-	unsigned long i, flags;
-
-	start &= ~(LINESIZE - 1);
-
-	local_irq_save(flags);
-
-	for (i = 0; i < lines; i++) {
-		__asm__ __volatile__ (
-			"	dccleaninva(%0); "
-			"	icinva(%0);	"
-			:
-			: "r" (start)
-		);
-		start += LINESIZE;
-	}
-	__asm__ __volatile__ (
-		"isync"
-	);
-	local_irq_restore(flags);
-}
-
-
-long __vmcache(enum VM_CACHE_OPS op, unsigned long addr, unsigned long len)
-{
-	switch (op)
-	{
-	case ickill:
-		__asm__ __volatile__ (
-			"ickill"
-		);
-	break;
-	case dckill:
-		__asm__ __volatile__ (
-			"dckill"
-		);
-	break;
-	case l2kill:
-		__asm__ __volatile__ (
-			"l2kill"
-		);
-	break;
-	case idsync:
-        	hexagon_idsync_range(addr, len);
-	break;
-	
-	}
-	return 0;
-}
-
-
-
+#if 0
 extern void coresys_newmap(u32 pte_base);
-extern void coresys_clear_tlb_replace();
-
+extern void coresys_clear_tlb_replace(void);
 
 long __vmnewmap(void * base)
 {
-	printk("++++SET NEW MAP++++ %08X\n", (u32)base);
+//	printk("++++SET NEW MAP++++ %08X\n", (u32)base);
 	coresys_newmap((u32)base);
 	coresys_clear_tlb_replace();
 	return 0;	
 }
+#endif
 
 
 
@@ -284,7 +224,7 @@ asmlinkage void __sched test_schedule(void)
 // special test code for testing xmiss on page boundary
 // 4 instructions in the one packet - 16 bytes
 //
-
+#if 0
 extern void tst_pkg_code_start(void);
 extern void tst_pkg_code_end(void);
 typedef void (*TstPkgCode_t)(void);
@@ -306,4 +246,81 @@ void debug_xfault_on_page_bound(void)
 	printk("after call\n");
 	while (1);
 }
+#endif
+
+
+void debug_dump_threads(u32 address)
+{
+	int k = 0;
+	struct task_struct *task = current;
+	struct task_struct *p, *t;
+	char* off;
+	struct thread_info *ti;
+	struct pt_regs *regs;
+
+	rcu_read_lock();
+	for_each_process(p) 
+	{
+		if (unlikely(p->flags & PF_KTHREAD))
+			continue;
+
+		if (p->mm && address)
+		{
+			printk("Address = %X\n", address);
+			u32 *pteL1 = __va(p->mm->context.ptbase);
+			printk("pteL1 = %X\n", (u32)pteL1);
+			u32 L1 = pteL1[address >> 22];
+			printk("L1 = %X\n", (u32)L1);
+			u32 L2PA = L1 & (~0xFFF);
+
+			u32 *pteL2 = __va(L2PA);
+			printk("pteL2 = %X\n", (u32)pteL2);
+			u32 L2 = pteL2[(address >> 12) & 0x3FF];
+			printk("L2 = %X\n", (u32)L2);
+		}
+
+
+		t = p;
+		off = "";
+		do 
+		{
+			ti = task_thread_info(t);
+			regs = ti->regs;
+
+			printk("%sTASK%02d: T=%X PTE=%X S=%X E=%X F=%X N=%s\n", 
+				off, k, t, t->mm ? (u32)t->mm->context.ptbase : 0, 
+				t->state, t->exit_state, t->flags, t->comm);
+			printk("%sLR=%X ELR=%X PID=%X\n", off, regs->r31, pt_elr(regs), task_pid_vnr(t));
+			off = "\t";
+			k++;
+
+			/*
+			 * t->mm == NULL. Make sure next_thread/next_task
+			 * will see other CLONE_VM tasks which might be
+			 * forked before exiting.
+			 */
+			smp_rmb();
+		} while_each_thread(p, t);
+	}
+	rcu_read_unlock();
+}
+
+
+void dump_in_futex(void)
+{
+	struct pt_regs *regs = current_thread_info()->regs;
+	printk("R30=%08X R29=%08X R28=%08X UGP=%08X %s\n", regs->r30, regs->r29, regs->r28, regs->ugp, current->comm);
+
+	debug_dump_tlb_all();
+
+	u8 *tls = regs->ugp;
+	printk("CPID=%X TID=%X PID=%X\n", task_pid_vnr(current), *(u32*)(tls + 104), *(u32*)(tls + 108));
+	
+	debug_dump_threads(regs->ugp);
+
+//	debug_dump_tlb_all();
+
+//	do_show_user_stack(current, &regs->r30, pt_elr(regs));
+}
+
                                   

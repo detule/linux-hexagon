@@ -94,6 +94,9 @@ static int set_next_event(unsigned long delta, struct clock_event_device *evt)
 	/*  Assuming the timer will be disabled when we enter here.  */
 
 //	printk("set next event %X\n", delta);
+//	delta *= 64;
+//	delta /= 2;
+//	delta = 10;
 
 	iowrite32(1, &rtos_timer->clear);
 	iowrite32(0, &rtos_timer->clear);

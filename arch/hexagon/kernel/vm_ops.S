@@ -30,10 +30,6 @@
  * consistent with the ABI calling convention.
  */
 
-ENTRY(__vmrte)
-	trap1(#HVM_TRAP1_VMRTE);
-	jumpr	R31;
-
 ENTRY(__vmsetvec)
 	trap1(#HVM_TRAP1_VMSETVEC);
 	jumpr	R31;
@@ -60,43 +56,64 @@ ENTRY(__vmnewmap)
 	jumpr	R31;
 
 ENTRY(__vmcache)
-	trap1(#HVM_TRAP1_VMCACHE);
+// NOT USED
+//	trap1(#HVM_TRAP1_VMCACHE);
 	jumpr	R31;
 
 ENTRY(__vmgettime)
 	trap1(#HVM_TRAP1_VMGETTIME);
 	jumpr	R31;
 
-ENTRY(__vmsettime)
-	trap1(#HVM_TRAP1_VMSETTIME);
-	jumpr	R31;
-
 ENTRY(__vmwait)
-	trap1(#HVM_TRAP1_VMWAIT);
+//	trap1(#HVM_TRAP1_VMWAIT);
 	jumpr	R31;
 
 ENTRY(__vmyield)
-	trap1(#HVM_TRAP1_VMYIELD);
+//	trap1(#HVM_TRAP1_VMYIELD);
 	jumpr	R31;
 
 ENTRY(__vmstart)
-	trap1(#HVM_TRAP1_VMSTART);
+//	trap1(#HVM_TRAP1_VMSTART);
 	jumpr	R31;
 
 ENTRY(__vmstop)
-	trap1(#HVM_TRAP1_VMSTOP);
+//	trap1(#HVM_TRAP1_VMSTOP);
 	jumpr	R31;
 
-ENTRY(__vmvpid)
-	trap1(#HVM_TRAP1_VMVPID);
-	jumpr	R31;
 
-/*  Probably not actually going to use these; see vm_entry.S  */
+ENTRY(__my_int_cfg)
+	trap1(#MY_TRAP1_INT_CFG);
+	jumpr	r31;
 
-ENTRY(__vmsetregs)
-	trap1(#HVM_TRAP1_VMSETREGS);
-	jumpr	R31;
+ENTRY(__my_int_raise)
+	trap1(#MY_TRAP1_INT_RAISE);
+	jumpr	r31;
 
-ENTRY(__vmgetregs)
-	trap1(#HVM_TRAP1_VMGETREGS);
-	jumpr	R31;
+ENTRY(__my_int_enable)
+	trap1(#MY_TRAP1_INT_ENABLE);
+	jumpr	r31;
+
+ENTRY(__my_int_disable)
+	trap1(#MY_TRAP1_INT_DISABLE);
+	jumpr	r31;
+
+ENTRY(__my_int_done)
+	trap1(#MY_TRAP1_INT_DONE);
+	jumpr	r31;
+
+ENTRY(__my_int_init)
+	trap1(#MY_TRAP1_INT_INIT);
+	jumpr	r31;
+
+ENTRY(__my_int_settype)
+	trap1(#MY_TRAP1_INT_SETTYPE);
+	jumpr	r31;
+
+ENTRY(__my_int_setpol)
+	trap1(#MY_TRAP1_INT_SETPOL);
+	jumpr	r31;
+
+ENTRY(__my_int_gtoggle)
+	trap1(#MY_TRAP1_INT_GTOGGLE);
+	jumpr	r31;
+

@@ -102,7 +102,8 @@ static int kk = 0;
 static char symBuf1[KSYM_SYMBOL_LEN];
 static char symBuf2[KSYM_SYMBOL_LEN];
 extern u32* hsusb_base;
-void dump_sirc_state();
+void dump_sirc_state(void);
+void debug_dump_threads(u32 addr);
 #endif
 
 
@@ -117,12 +118,13 @@ void arch_do_IRQ(struct pt_regs *regs)
 	kk++;
 	if (kk > 400) // 140 * 400
 	{
-	    printk("IRQ: ELR=%08X LR=%08X\n", pt_elr(regs), regs->r31);	
-	    if (hsusb_base) printk("USB DATA: %08X %08X %08X\n",  hsusb_base[0x140/4], hsusb_base[0x144/4], hsusb_base[0x148/4]);
+	    printk("IRQ: ELR=%08X LR=%08X\n", (u32)pt_elr(regs), (u32)regs->r31);	
+//	    if (hsusb_base) printk("USB DATA: %08X %08X %08X\n",  hsusb_base[0x140/4], hsusb_base[0x144/4], hsusb_base[0x148/4]);
 	    sprint_symbol(symBuf1, pt_elr(regs));
 	    sprint_symbol(symBuf2, regs->r31);
 	    printk("  ELR='%s' LR='%s'\n\n", symBuf1, symBuf2);
-	    dump_sirc_state();
+	    debug_dump_threads(0);
+//	    dump_sirc_state();
 	    kk = 0;	
 	}
 #endif 
