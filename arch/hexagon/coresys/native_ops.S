@@ -88,11 +88,11 @@ ENTRY(__vmgettime)
 // __vmsettime is not referenced and not used
 
 ENTRY(__vmwait)
-	trap1(#HVM_TRAP1_VMWAIT);
+//	trap1(#HVM_TRAP1_VMWAIT);
 	jumpr	R31;
 
 ENTRY(__vmyield)
-	trap1(#HVM_TRAP1_VMYIELD);
+//	trap1(#HVM_TRAP1_VMYIELD);
 	jumpr	R31;
 
 ENTRY(__vmstart)
@@ -111,11 +111,11 @@ ENTRY(__vmstop)
 /*  Probably not actually going to use these; see vm_entry.S  */
 
 ENTRY(__vmsetregs)
-	trap1(#HVM_TRAP1_VMSETREGS);
+//	trap1(#HVM_TRAP1_VMSETREGS);
 	jumpr	R31;
 
 ENTRY(__vmgetregs)
-	trap1(#HVM_TRAP1_VMGETREGS);
+//	trap1(#HVM_TRAP1_VMGETREGS);
 	jumpr	R31;
 
 

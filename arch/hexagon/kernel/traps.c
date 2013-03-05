@@ -217,6 +217,75 @@ void dump_stack(void)
 }
 EXPORT_SYMBOL(dump_stack);
 
+
+static void do_show_user_stack(struct task_struct *task, unsigned long *fp, unsigned long ip)
+{
+	int kstack_depth_to_print = 24;
+	unsigned long offset, size;
+	const char *name = NULL;
+	unsigned long *newfp;
+	char tmpstr[128];
+	char *modname;
+	int i;
+
+	if (task == NULL)
+		task = current;
+
+	printk(KERN_INFO "CPU#%d, %s/%d, User Call Trace:\n",
+	       raw_smp_processor_id(), task->comm,
+	       task_pid_nr(task));
+
+	if (fp == NULL) {
+		if (task == current) {
+			asm("%0 = r30" : "=r" (fp));
+		} else {
+			fp = (unsigned long *)
+			     ((struct hexagon_switch_stack *)
+			     task->thread.switch_sp)->fp;
+		}
+	}
+
+	if ((((unsigned long) fp) & 0x3) || ((unsigned long) fp < 0x1000)) 
+	{
+		printk(KERN_INFO "-- Corrupt frame pointer %p\n", fp);
+		return;
+	}
+
+	/* Saved link reg is one word above FP */
+	if (!ip) ip = *(fp + 1);
+
+	for (i = 0; i < kstack_depth_to_print; i++) 
+	{
+		printk(KERN_INFO "[%p] 0x%lX\n", fp, ip);
+
+		newfp = (unsigned long *) *fp;
+		if (((unsigned long) newfp) & 0x3) 
+		{
+			printk(KERN_INFO "-- Corrupt frame pointer %p\n", newfp);
+			break;
+		}
+
+		if (newfp == 0x0) break;
+
+//                printk("newfp = %08X %08X\n", newfp, fp);
+
+		ip = *(newfp + 1);
+
+		/* If link reg is null, we are done. */
+		if (ip == 0x0) break;
+
+		fp = newfp;
+	}
+}
+
+
+void dump_user_stack(void)
+{
+	struct pt_regs *regs = current_thread_info()->regs;
+	do_show_user_stack(current, &regs->r30, pt_elr(regs));
+}
+
+
 int die(const char *str, struct pt_regs *regs, long err)
 {
 	static struct {
@@ -428,7 +497,7 @@ void do_trap0(struct pt_regs *regs)
 
 
 // Cotulla debug
-	my_out("do_trap0 %d\n", regs->r06);
+//	my_out("do_trap0 %d\n", regs->r06);
 
 	switch (pt_cause(regs)) {
 	case TRAP_SYSCALL:
@@ -511,6 +580,9 @@ void do_trap0(struct pt_regs *regs)
 #endif
 		}
 		break;
+	default:
+		panic("ERROR: Unrecognized trap0: C=%X SSR=%X r6=%08X LR=%08X ELR=%08X\n", 
+				pt_cause(regs),last_exc_ssr,regs->r06, regs->r31, pt_elr(regs));
 	}
 	/* Ignore other trap0 codes for now, especially 0 (Angel calls) */
 }

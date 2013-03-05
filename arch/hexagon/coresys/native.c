@@ -21,8 +21,11 @@
 #include <linux/mm.h>
 #include <linux/module.h>
 #include <linux/kallsyms.h>
+#include <linux/sched.h>
+
 #include <asm/cacheflush.h>
 #include <asm/hexagon_vm.h>
+
 #include "native_defs.h"
 #include "tlb_usage.h"
 
@@ -92,12 +95,13 @@ long __vmcache(enum VM_CACHE_OPS op, unsigned long addr, unsigned long len)
 
 
 extern void coresys_newmap(u32 pte_base);
-
+extern void coresys_clear_tlb_replace(void);
 
 long __vmnewmap(void * base)
 {
-	printk("++++SET NEW MAP++++ %08X\n", (u32)base);
+//	printk("++++SET NEW MAP++++ %08X\n", (u32)base);
 	coresys_newmap((u32)base);
+	coresys_clear_tlb_replace();
 	return 0;	
 }
 
@@ -295,4 +299,81 @@ void debug_xfault_on_page_bound(void)
 	printk("after call\n");
 	while (1);
 }
+
+
+
+void debug_dump_threads(u32 address)
+{
+	int k = 0;
+	struct task_struct *task = current;
+	struct task_struct *p, *t;
+	char* off;
+	struct thread_info *ti;
+	struct pt_regs *regs;
+
+	rcu_read_lock();
+	for_each_process(p) 
+	{
+		if (unlikely(p->flags & PF_KTHREAD))
+			continue;
+
+		if (p->mm && address)
+		{
+			printk("Address = %X\n", address);
+			u32 *pteL1 = __va(p->mm->context.ptbase);
+			printk("pteL1 = %X\n", (u32)pteL1);
+			u32 L1 = pteL1[address >> 22];
+			printk("L1 = %X\n", (u32)L1);
+			u32 L2PA = L1 & (~0xFFF);
+
+			u32 *pteL2 = __va(L2PA);
+			printk("pteL2 = %X\n", (u32)pteL2);
+			u32 L2 = pteL2[(address >> 12) & 0x3FF];
+			printk("L2 = %X\n", (u32)L2);
+		}
+
+
+		t = p;
+		off = "";
+		do 
+		{
+			ti = task_thread_info(t);
+			regs = ti->regs;
+
+			printk("%sTASK%02d: T=%X PTE=%X S=%X E=%X F=%X N=%s\n", 
+				off, k, t, t->mm ? (u32)t->mm->context.ptbase : 0, 
+				t->state, t->exit_state, t->flags, t->comm);
+			printk("%sLR=%X ELR=%X PID=%X\n", off, regs->r31, pt_elr(regs), task_pid_vnr(t));
+			off = "\t";
+			k++;
+
+			/*
+			 * t->mm == NULL. Make sure next_thread/next_task
+			 * will see other CLONE_VM tasks which might be
+			 * forked before exiting.
+			 */
+			smp_rmb();
+		} while_each_thread(p, t);
+	}
+	rcu_read_unlock();
+}
+
+
+void dump_in_futex(void)
+{
+	struct pt_regs *regs = current_thread_info()->regs;
+	printk("R30=%08X R29=%08X R28=%08X UGP=%08X %s\n", regs->r30, regs->r29, regs->r28, regs->ugp, current->comm);
+
+	debug_dump_tlb_all();
+
+	u8 *tls = regs->ugp;
+	printk("CPID=%X TID=%X PID=%X\n", task_pid_vnr(current), *(u32*)(tls + 104), *(u32*)(tls + 108));
+	
+	debug_dump_threads(regs->ugp);
+
+//	debug_dump_tlb_all();
+
+//	do_show_user_stack(current, &regs->r30, pt_elr(regs));
+}
+
                                   

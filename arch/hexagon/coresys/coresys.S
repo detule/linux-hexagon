@@ -71,8 +71,8 @@
 #define L2FETCH_TLB_LO      TLB_MAKE_LO(0, TLB_SIZE_4K, TLB_L1WB_L2C, TLB_R) // without actual PA address
 
 
-	__CPUINIT
-
+//	__CPUINIT
+	.section	".coresys", "ax"
 
 
 ENTRY(_SW_MMU_START)
@@ -411,11 +411,31 @@ ENTRY(coresys_user_test)
     r0 = ssr
     r1 = #1 
     r0 = insert (r1, #3, #16)
-    ssr = r0
+    r0 = #0
+//    ssr = r0
 
-    LOAD32(r0, 0xF0300000)	// +10
+    LOAD32(r0, 0xF1000000)	// +10
     r1 = memw(r0)               // +18
-    memw(r0) = r3
+    memw(r0) = r3		// +1C
+
+
+// TLB entry S=0, G=1
+//
+// User mode without RTE, TLB_RWX - no fault
+// User mode without RTE, TLB_R   - read OK, write FAIL, SSR=C30023
+// User mode without RTE, TLB_WX  - write OK, read FAIL, SSR=C30022
+//
+// TLB entry S=1, G=1
+//
+// User mode without RTE, TLB_R   - read OK, write FAIL, SSR=C30023 
+// Supermode without RTE, TLB_R   - no fault
+//
+// TLB entry S=0, G=1
+// Supermode without RTE, TLB_R   - no fault
+//
+// TLB entry S=1, G=1
+// Supermode without RTE, TLB_R   - 
+//
 
     jump .
 

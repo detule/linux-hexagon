@@ -38,7 +38,7 @@ long __vmclrmap(void * start, unsigned long size)
 	if (++kounter < 32)
 	{
 		printk("++++CLR MAP++++ %08X %08X\n", (u32)start, size);
-		dump_stack();
+//		dump_stack();
 	}
 	coresys_clear_tlb_replace();
 	return 0;

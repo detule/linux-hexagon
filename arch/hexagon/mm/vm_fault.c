@@ -101,7 +101,10 @@ good_area:
 	}
 
 	fault = handle_mm_fault(mm, vma, address, flags);
+	printk("handle_mm_fault %08X: A=%X VMF=%X F=%X %X\n", mm->context.ptbase, address, vma->vm_flags, flags, fault);
+
 #if 0
+
 	if (++kounter < 32)
 	{
 //	printk("handle_mm_fault: A=%X VMF=%X F=%X %X\n", address, vma->vm_flags, flags, fault);
