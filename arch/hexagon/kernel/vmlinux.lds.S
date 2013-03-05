@@ -36,7 +36,12 @@ See asm-generic/sections.h for seemingly required labels.
 
 #define PAGE_SIZE _PAGE_SIZE
 
-#define ENTRY_OFFSET 0x1000
+
+/* CoreSys located on the 64K fixed TLB entry, so address must be aligned to 64K */
+#define CORESYS_OFFSET  0x10000
+
+#define ENTRY_OFFSET 	(CORESYS_OFFSET + 0x10000)
+
 
 /*  This LOAD_OFFSET is temporary for debugging on the simulator; it may change
     for hypervisor pseudo-physical memory.  */
@@ -44,6 +49,11 @@ See asm-generic/sections.h for seemingly required labels.
 
 SECTIONS
 {
+	. = 0xF0000000;	/* CoreSys VA address */
+	.coresys : AT (PAGE_OFFSET + CORESYS_OFFSET) {
+		*(.coresys)
+	}
+	
 	. = PAGE_OFFSET + LOAD_ADDRESS;
 
 	.tags : {

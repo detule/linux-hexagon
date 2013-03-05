@@ -46,9 +46,9 @@ LO V2 format:
 
     0[20] 12[20] - PA address
     20[3] 9[3]   - page size    
-    23[1] 8[1]   - super 
-    24[1] 7[1]   - global
-    25[1] 6[1]   - valid
+    23[1] 8[1]   - super  FAKE
+    24[1] 7[1]   - global FAKE
+    25[1] 6[1]   - valid  FAKE
     26[3] 3[3]   - cache control
     29[1] 2[1]   - read
     30[1] 1[1]   - write
