@@ -1034,7 +1034,6 @@ exc_tlb_miss_invalid:
 	r0 = ssr
 	r0 = clrbit(r0,#SSR_BIT_IE)
 	r0 = clrbit(r0,#SSR_BIT_USR)
-	r0 = clrbit(r0,#SSR_BIT_EXC)
 	ssr = r0
 	isync
 
@@ -1051,46 +1050,44 @@ exc_tlb_miss_invalid:
 
     .endm
 
+#define VEC_FAULT (2*4)
+#define VEC_TRAP0 (5*4)
+#define VEC_INT   (7*4)
 
+exc_done:
+	/*Restore r0,r10,flags*/
+	r1 = memw(r10+#_RFLAGS);
+	p3:0 = r1;
+	r1:0 = memd(r10+#_R0100); 
+	crswap (r10, sgp)
+	rte
 
 exc_fault:
 //	jump exc_test
  	EXCEPTION_ENTER_HEAD;
-	LOAD32(r0,_K_enter_genex)
-	/*Restore r0,r10,flags*/
-	r1 = memw(r10+#_RFLAGS);
-	p3:0 = r1;
-	{ 
-	    r1:0 = memd(r10+#_R0100); 
-	    crswap (r10, sgp)
-	    jumpr r0 
-        }
+	LOAD32(r0,coresys_gevb)
+	r0 = memw(r0)
+	r0 = add(r0, #VEC_FAULT)
+	elr = r0
+	jump exc_done
 
 exc_int:
 //	jump int_debug
  	EXCEPTION_ENTER_HEAD;
-	LOAD32(r0,_K_enter_interrupt)
-	/*Restore r0,r10,flags*/
-	r1 = memw(r10+#_RFLAGS);
-	p3:0 = r1;
-	{ 
-	    r1:0 = memd(r10+#_R0100); 
-	    crswap (r10, sgp)
-	    jumpr r0 
-        }
+	LOAD32(r0,coresys_gevb)
+	r0 = memw(r0)
+	r0 = add(r0, #VEC_INT)
+	elr = r0
+	jump exc_done
 
 exc_trap0:
 //	jump int_debug
 	EXCEPTION_ENTER_HEAD;
-	LOAD32(r0,_K_enter_trap0)
-	/*Restore r0,r10,flags*/
-	r1 = memw(r10+#_RFLAGS);
-	p3:0 = r1;
-	{ 
-	    r1:0 = memd(r10+#_R0100); 
-	    crswap (r10, sgp)
-	    jumpr r0 
-        }
+	LOAD32(r0,coresys_gevb)
+	r0 = memw(r0)
+	r0 = add(r0, #VEC_TRAP0)
+	elr = r0
+	jump exc_done
 
 ENTRY(int_debug)
     LOAD32(r29, DebugStack)
@@ -1107,44 +1104,6 @@ ENTRY(guard_debug)
     LOAD32(r3,debug_guard_out)
     callr r3
     jump  .
-
-//Anything >r1
-.global coresys_clear_guard
-coresys_clear_guard:
-    crswap (r10, sgp)
-    r3 = #0
-    memw(r10 + #_RGUARD) = r3
-    crswap (r10, sgp)
-    jumpr r31
-
-// ret in r0,r1,r2,r3 only r31 can be clobbered!
-.global coresys_getregs
-coresys_getregs:
-    crswap (r10, sgp)
-	r0 = memw(r10+#_RGELR);
-	r1 = memw(r10+#_RGSR);
-	r2 = memw(r10+#_RGOSP);
-	r3 = memw(r10+#_RGBADVA);
-	//Restore
-    crswap (r10, sgp)
-	jumpr lr
-
-
-// r0,r1,r2,r3,r4 arguments, all registers up to 29 safe to clobber
-.global coresys_setregs
-coresys_setregs:
-//interrupts and traps must be disabled here, this state is only valid one per core
-    crswap (r10, sgp)
-	elr = r0
-	memw(r10 + #_RGSR) = r1;
-	memw(r10 + #_RGOSP) = r2;
-	badva = r3
-
-	//Restore
-    crswap (r10, sgp)
-	jumpr lr
-
-
 
 .global foo
 foo:

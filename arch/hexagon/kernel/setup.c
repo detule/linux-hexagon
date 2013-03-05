@@ -78,7 +78,7 @@ void __init setup_arch(char **cmdline_p)
 	/*
 	 * Set up event bindings to handle exceptions and interrupts.
 	 */
-	//__vmsetvec(_K_VM_event_vector);
+	__vmsetvec(_K_VM_event_vector);
 
 	/*
 	 * Simulator has a few differences from the hardware.
