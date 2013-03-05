@@ -29,6 +29,7 @@
 #include "qdsp6_tlb.h"
 #include "tlb_usage.h"
 #include "native_defs.h"
+#include "swd_regs.h"
 
 
 
@@ -462,8 +463,8 @@ exc_vectors:
     jump exc_reserved
     jump exc_tlbmiss_RW
     jump exc_reserved
-    jump exc_trap
-    jump exc_trap
+    jump exc_trap0
+    jump exc_trap1
     jump exc_reserved
     jump exc_reserved
     jump exc_reserved
@@ -561,19 +562,6 @@ exc_reset:
 
 //    call    thread_start
     jump    .
-
-
-#define _R0100   0
-#define _R0302   8
-#define _R0504  16
-#define _R0706  24
-#define _R0908  32
-#define _RGOSP  40
-#define _RGSR   44
-#define _RFLAGS 48
-#define _RGUARD 52
-#define _RGBADVA 56
-#define _RGELR  60
 
 #define GSR_CAUSE	0
 
@@ -995,10 +983,6 @@ exc_tlb_miss_invalid:
 	/*Interrupts are not enabled while in EX mode*/ 
 	/*Save flags*/ 
 	memw(r10 + #_RFLAGS) = r0; 
-	
-//	LOAD32 (r0, last_exc_ssr)
-//	r1 = ssr
-//	memw (r0) = r1
 		
 	/*set the usr mode bit and interupt enable bit in _RGSR */ 
 	r0 = #0; // r0 holds GSR
@@ -1057,6 +1041,9 @@ exc_tlb_miss_invalid:
 	r0 = memw(r10+#_RGUARD)
 	p0 = cmp.ge(r0,#1)
 	if(p0) jump guard_debug
+	LOAD32 (r0, last_exc_ssr)
+	r1 = ssr
+	memw (r0) = r1
 	r0 = #1
 	memw(r10+#_RGUARD) = r0;
 
@@ -1079,7 +1066,7 @@ exc_int:
 	jump _K_enter_interrupt
 
 
-exc_trap:
+exc_trap0:
 	EXCEPTION_ENTER_HEAD;
 	jump _K_enter_trap0
 
@@ -1090,6 +1077,8 @@ ENTRY(int_debug)
 
 ENTRY(guard_debug)
     LOAD32(r29, DebugStack)
+    LOAD32 (r0, last_exc_ssr)
+    r0 = memw (r0)
     r0 = elr
     r1 = r29
     call debug_guard_out
@@ -1138,11 +1127,17 @@ coresys_rte:
     crswap (r10, sgp)
 	memd (r10 + #_R0100) = r1:0
 	memd (r10 + #_R0302) = r3:2
-
-//deal with gsr
-//TODO: needs to be optimized and actually work so bits can be cleared
 	r0 = p3:0
 	memw(r10+#_RFLAGS)=r0
+
+//TODO: Ensure that atomic operation in progress at exception time will fail
+#if 0
+	r0 = memw_locked(r29)
+	memw_locked(r29,p0) = r0 
+#endif
+//deal with gsr
+//TODO: needs to be optimized and actually work so bits can be cleared
+
 	r1 = memw(r10 + #_RGSR);
 
 	r2 = ssr;
