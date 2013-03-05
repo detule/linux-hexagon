@@ -36,6 +36,7 @@
 
 extern void my_out(const char *str, ...);
 int __init scr_fb_console_init(void);
+void hexagon_idsync_range(unsigned long start, unsigned long size);
 
 
 
@@ -202,6 +203,7 @@ void free_initrd_mem(unsigned long start, unsigned long end)
 				    "initrd");
 }
 
+
 void sync_icache_dcache(pte_t pte)
 {
 	unsigned long addr;
@@ -210,8 +212,14 @@ void sync_icache_dcache(pte_t pte)
 	page = pte_page(pte);
 	addr = (unsigned long) page_address(page);
 
-	__vmcache_idsync(addr, PAGE_SIZE);
+// Cotulla: I assume this function will work from user mode
+// like other functions in this file
+// otherwise it must be moved to coresys
+//
+	hexagon_idsync_range(addr, PAGE_SIZE);
+//	__vmcache_idsync(addr, PAGE_SIZE);
 }
+
 
 /*
  * In order to set up page allocator "nodes",

@@ -30,70 +30,7 @@
 #include "tlb_usage.h"
 
 
-
-#define spanlines(start, end) \
-	(((end - (start & ~(LINESIZE - 1))) >> LINEBITS) + 1)
-
-
-// Added function according to Hexagon Virtual Machine specifications
-// for IDSYNC cache opcode (page 30)
-// Not clear why it must flush and invalidate DCache instead of just flush...
-//
-void hexagon_idsync_range(unsigned long start, unsigned long size)
-{
-	unsigned long end = start + size;
-	unsigned long lines = spanlines(start, end-1);
-	unsigned long i, flags;
-
-	start &= ~(LINESIZE - 1);
-
-	local_irq_save(flags);
-
-	for (i = 0; i < lines; i++) {
-		__asm__ __volatile__ (
-			"	dccleaninva(%0); "
-			"	icinva(%0);	"
-			:
-			: "r" (start)
-		);
-		start += LINESIZE;
-	}
-	__asm__ __volatile__ (
-		"isync"
-	);
-	local_irq_restore(flags);
-}
-
-
-long __vmcache(enum VM_CACHE_OPS op, unsigned long addr, unsigned long len)
-{
-	switch (op)
-	{
-	case ickill:
-		__asm__ __volatile__ (
-			"ickill"
-		);
-	break;
-	case dckill:
-		__asm__ __volatile__ (
-			"dckill"
-		);
-	break;
-	case l2kill:
-		__asm__ __volatile__ (
-			"l2kill"
-		);
-	break;
-	case idsync:
-        	hexagon_idsync_range(addr, len);
-	break;
-	
-	}
-	return 0;
-}
-
-
-
+#if 0
 extern void coresys_newmap(u32 pte_base);
 extern void coresys_clear_tlb_replace(void);
 
@@ -104,6 +41,7 @@ long __vmnewmap(void * base)
 	coresys_clear_tlb_replace();
 	return 0;	
 }
+#endif
 
 
 
@@ -284,7 +222,7 @@ asmlinkage void __sched test_schedule(void)
 // special test code for testing xmiss on page boundary
 // 4 instructions in the one packet - 16 bytes
 //
-
+#if 0
 extern void tst_pkg_code_start(void);
 extern void tst_pkg_code_end(void);
 typedef void (*TstPkgCode_t)(void);
@@ -306,7 +244,7 @@ void debug_xfault_on_page_bound(void)
 	printk("after call\n");
 	while (1);
 }
-
+#endif
 
 
 void debug_dump_threads(u32 address)

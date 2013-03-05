@@ -33,7 +33,6 @@
  * consistent with the ABI calling convention.
  */
 
-// __vmrte is not used from C code, only from asm code
 
 ENTRY(__vmsetvec)
 // TODO: save pointer to coresys area
@@ -71,7 +70,6 @@ ENTRY(__vmintop)
 
 // __vmclrmap implemented inside .C file
 // __vmnewmap implemented inside .C file
-// __vmcache implemented inside .C file
 
 
 // returns uint64 in r0:1
@@ -84,8 +82,6 @@ ENTRY(__vmgettime)
 	p0 = cmp.eq (r3, r1)
 	if !p0 jump __vmgettime
 	jumpr	R31;
-
-// __vmsettime is not referenced and not used
 
 ENTRY(__vmwait)
 //	trap1(#HVM_TRAP1_VMWAIT);
@@ -103,19 +99,6 @@ ENTRY(__vmstart)
 ENTRY(__vmstop)
 // TODO: implement it 
 //	trap1(#HVM_TRAP1_VMSTOP);
-	jumpr	R31;
-
-// __vmvpid is not used
-
-
-/*  Probably not actually going to use these; see vm_entry.S  */
-
-ENTRY(__vmsetregs)
-//	trap1(#HVM_TRAP1_VMSETREGS);
-	jumpr	R31;
-
-ENTRY(__vmgetregs)
-//	trap1(#HVM_TRAP1_VMGETREGS);
 	jumpr	R31;
 
 

@@ -17,3 +17,14 @@
 #define _RGUARD 52
 #define _RGBADVA 56
 #define _RGELR  60
+#define _R31    64
+
+
+// Cotulla: Temporary here
+//
+
+#define GSR_CAUSE	0
+#define GSR_USR 	31
+#define GSR_IE  	30
+
+

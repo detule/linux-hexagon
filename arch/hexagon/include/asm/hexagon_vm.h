@@ -64,7 +64,6 @@ enum VM_INT_OPS {
 
 extern void _K_VM_event_vector(void);
 
-void __vmrte(void);
 long __vmsetvec(void *);
 long __vmsetie(long);
 long __vmgetie(void);
@@ -73,12 +72,10 @@ long __vmclrmap(void *, unsigned long);
 long __vmnewmap(void *);
 long __vmcache(enum VM_CACHE_OPS op, unsigned long addr, unsigned long len);
 unsigned long long __vmgettime(void);
-long __vmsettime(unsigned long long);
 long __vmstart(void *, void *);
 void __vmstop(void);
 long __vmwait(void);
 void __vmyield(void);
-long __vmvpid(void);
 
 static inline long __vmcache_ickill(void)
 {
@@ -193,6 +190,19 @@ static inline long __vmintop_clear(long i)
 #define HVM_TRAP1_VMVPID		20
 #define HVM_TRAP1_VMSETREGS		21
 #define HVM_TRAP1_VMGETREGS		22
+
+#define MY_TRAP1_INT_GTOGGLE		23
+#define MY_TRAP1_INT_CFG		24
+#define MY_TRAP1_INT_RAISE		25
+#define MY_TRAP1_INT_ENABLE		26
+#define MY_TRAP1_INT_DISABLE		27
+#define MY_TRAP1_INT_DONE		28
+#define MY_TRAP1_INT_INIT		29
+#define MY_TRAP1_INT_SETTYPE		30
+#define MY_TRAP1_INT_SETPOL 		31
+
+#define MY_TRAP1_MAX			31
+
 
 #endif /* __ASSEMBLY__ */
 

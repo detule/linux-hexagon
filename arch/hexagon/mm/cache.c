@@ -111,7 +111,40 @@ void hexagon_inv_dcache_range(unsigned long start, unsigned long end)
 
 
 
+// Added function according to Hexagon Virtual Machine specifications
+// for IDSYNC cache opcode (page 30)
+// Not clear why it must flush and invalidate DCache instead of just flush...
+//
+void hexagon_idsync_range(unsigned long start, unsigned long size)
+{
+	unsigned long end = start + size;
+	unsigned long lines = spanlines(start, end-1);
+	unsigned long i, flags;
 
+	start &= ~(LINESIZE - 1);
+
+	local_irq_save(flags);
+
+	for (i = 0; i < lines; i++) {
+		__asm__ __volatile__ (
+			"	dccleaninva(%0); "
+			"	icinva(%0);	"
+			:
+			: "r" (start)
+		);
+		start += LINESIZE;
+	}
+	__asm__ __volatile__ (
+		"isync"
+	);
+	local_irq_restore(flags);
+}
+
+
+// Cotulla: this code is not used
+// disabled to prevent malfunction
+//
+#if 0
 /*
  * This is just really brutal and shouldn't be used anyways,
  * especially on V2.  Left here just in case.
@@ -126,3 +159,4 @@ void flush_cache_all_hexagon(void)
 	local_irq_restore(flags);
 	mb();
 }
+#endif
