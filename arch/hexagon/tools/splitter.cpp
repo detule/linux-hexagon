@@ -4,10 +4,10 @@
 #include <string.h>
 
 
-#define BOOTPARAM_SIGN		0x50423651	'Q6BP'
+#define BOOTPARAM_SIGN		0x50423651	//'Q6BP'
 
 #define PHYS phys//0x47000000
-#define ENTRY_OFFSET 0x1000
+#define ENTRY_OFFSET 0x20000
 #define INITRD_OFFSET 0xb00000 //12MB
 
 int main(int argc, char** argv){

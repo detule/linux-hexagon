@@ -24,6 +24,11 @@
 #include <asm/thread_info.h>
 #include "native_defs.h"
 
+#define LOAD32(reg, value)    \
+        reg.h = #HI(value);    \
+        reg.l = #LO(value)
+
+
 /*
  * Entry into guest-mode Linux under Hexagon Virtual Machine.
  * Stack pointer points to event record - build pt_regs on top of it,
@@ -148,7 +153,8 @@
 	} \
 	memd(R29 +#_PT_R0504) = R5:4; \
 	memd(R29 + #_PT_R3130) = R31:30; \
-	call coresys_getregs; \
+	LOAD32(r0, coresys_getregs); \
+	callr r0; \
 	{ \
 		memd(R29 + #_PT_ER_VMEL) = R1:0; \
 		R0 = R29; \
@@ -182,7 +188,8 @@
 
 event_dispatch:
 	save_pt_regs()
-	call	coresys_clear_guard
+	LOAD32(r9, coresys_clear_guard);
+	callr r9
 
 	callr	r1
 
@@ -261,15 +268,20 @@ restore_all:
 	R1:0 = memd(R29 + #_PT_ER_VMEL);
 	R3:2 = memd(R29 + #_PT_ER_VMPSP);
 
-	call coresys_setregs;
+	LOAD32(r4, coresys_setregs)
+	callr r4;
 
 	R0 = R29
 	restore_pt_regs()
-	R1:0 = memd(R29 + #_PT_R0100);
-	R29 = add(R29, #_PT_REGS_SIZE);
+	LOAD32(r0,coresys_rte)
 
-	//jump to coresys for rte
-	jump coresys_rte;
+	{
+		R1:0 = memd(R29 + #_PT_R0100);
+		R29 = add(R29, #_PT_REGS_SIZE);
+
+		//jump to coresys for rte
+		jumpr r0;
+	}
 	/* Notreached */
 
 	.globl _K_enter_genex

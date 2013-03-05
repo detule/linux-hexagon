@@ -23,7 +23,8 @@
         reg.h = #HI(value);    \
         reg.l = #LO(value)
 
-__CPUINIT
+ // __CPUINIT
+.section ".coresys", "ax"
 
 .global exc_trap1
 

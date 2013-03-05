@@ -49,7 +49,7 @@ See asm-generic/sections.h for seemingly required labels.
 
 SECTIONS
 {
-	. = 0xF0000000;	/* CoreSys VA address */
+	. = 0xFF010000;	/* CoreSys VA address */
 	.coresys : AT (PAGE_OFFSET + CORESYS_OFFSET) {
 		*(.coresys)
 	}

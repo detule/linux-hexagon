@@ -31,6 +31,7 @@
 #include "native_defs.h"
 #include "tlb_usage.h"
 
+#define CORESYS_PAGE_OFFSET 0xFF000000
 
 /*
 Startup tasks:
@@ -208,9 +209,18 @@ ENTRY(stext)
 #else
 
     	LOAD32(r1, TLB_MAKE_LO(TLB_ADDR(0x49000000), TLB_SIZE_16M, TLB_UC, TLB_RWX))
+	r2 = #1;
+	r2 = asl(r2,#23)
+	r1 = or(r1,r2)
     	LOAD32(r2, TLB_MAKE_HI(TLB_ADDR(0xF8000000), 1, 0)) // global
     	r0 = #TLBUSG_DEBUG
     	TLB_ENTRY_SET r0, r1, r2 // idx, lo, hi
+
+	LOAD32(r1, TLB_MAKE_LO(TLB_ADDR((PHYS_OFFSET)), TLB_SIZE_1M, TLB_L1WB_L2C, TLB_RWX))
+	LOAD32(r2, TLB_MAKE_HI(TLB_ADDR(CORESYS_PAGE_OFFSET), 1, 0)) // global
+
+	r0 = #TLBUSG_DEBUG2
+	TLB_ENTRY_SET r0, r1, r2 // idx, lo, hi
 
 //Debug entry for hexagon timers
 #if 0
@@ -259,7 +269,8 @@ __head_s_vaddr_target:
 
 	// coresys init - sw mmu init
 	//
-	call	coresys_init
+	LOAD32(r3,coresys_init)
+	callr r3
 	
 	// remove indentify mapping here
 	//
@@ -310,10 +321,11 @@ __head_s_vaddr_target:
         // PA = VA - PAGE_OFFSET + PHYS_OFFSET
         // PA = VA + (PHYS_OFFSET - PAGE_OFFSET)
 	// C010 0000 -> 1010 0000       
-        LOAD32(r1, (PHYS_OFFSET - PAGE_OFFSET))
+        LOAD32(r1, (PHYS_OFFSET - CORESYS_PAGE_OFFSET))
         r0 = add (r0, r1) 
 
-	call coresys_newmap
+	LOAD32(r3,coresys_newmap)
+	callr r3
 
 
 // Cotulla: Test LEO bzZZzz code    

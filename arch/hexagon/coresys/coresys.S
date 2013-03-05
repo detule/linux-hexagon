@@ -72,7 +72,8 @@
 #define L2FETCH_TLB_LO      TLB_MAKE_LO(0, TLB_SIZE_4K, TLB_L1WB_L2C, TLB_R) // without actual PA address
 
 
-	__CPUINIT
+ // __CPUINIT
+.section ".coresys", "ax"
 
 
 
@@ -495,7 +496,8 @@ exc_reserved:
     r0 = elr
     r1 = badva
     r2 = r31
-    call debug_error_out
+    LOAD32(r3,debug_error_out)
+    callr r3
 #endif
     jump    .
 
@@ -506,7 +508,8 @@ exc_test:
     r0 = elr
     r1 = badva
     r2 = r31
-    call debug_test_out
+    LOAD32(r3,debug_test_out)
+    callr r3
     jump    .
 
 
@@ -865,7 +868,8 @@ exc_nmi:
     r0 = elr
     r1 = badva
     r2 = r31
-    call debug_error_out
+    LOAD32(r3,debug_error_out)
+    callr r3
     jump    .
 
 
@@ -882,7 +886,8 @@ exc_error2:
     r0 = elr
     r1 = badva
     r2 = r31
-    call debug_error_out
+    LOAD32(r3,debug_error_out)
+    callr r3
     jump    .
 #endif
 
@@ -905,7 +910,8 @@ exc_tlb_miss_invalid:
 //    r2 = r3
     r3 = r5
     r4 = r6
-    call debug_tlbmiss_invalid
+    LOAD32(r5,debug_tlbmiss_invalid)
+    callr r5
     jump .
 #endif
 
@@ -1027,32 +1033,54 @@ exc_tlb_miss_invalid:
 	r0 = #1
 	memw(r10+#_RGUARD) = r0;
 
-       /*Restore r0,r10,flags*/
-	r0 = memw(r10+#_RFLAGS);
-	p3:0 = r0; 
-	r1:0 = memd(r10+#_R0100); 
-	crswap (r10, sgp)
+
     .endm
 
 
 
 exc_fault:
+//	jump exc_test
  	EXCEPTION_ENTER_HEAD;
-	jump _K_enter_genex
-
+	LOAD32(r0,_K_enter_genex)
+	/*Restore r0,r10,flags*/
+	r1 = memw(r10+#_RFLAGS);
+	p3:0 = r1;
+	{ 
+	    r1:0 = memd(r10+#_R0100); 
+	    crswap (r10, sgp)
+	    jumpr r0 
+        }
 
 exc_int:
+//	jump int_debug
  	EXCEPTION_ENTER_HEAD;
-	jump _K_enter_interrupt
-
+	LOAD32(r0,_K_enter_interrupt)
+	/*Restore r0,r10,flags*/
+	r1 = memw(r10+#_RFLAGS);
+	p3:0 = r1;
+	{ 
+	    r1:0 = memd(r10+#_R0100); 
+	    crswap (r10, sgp)
+	    jumpr r0 
+        }
 
 exc_trap0:
+//	jump int_debug
 	EXCEPTION_ENTER_HEAD;
-	jump _K_enter_trap0
+	LOAD32(r0,_K_enter_trap0)
+	/*Restore r0,r10,flags*/
+	r1 = memw(r10+#_RFLAGS);
+	p3:0 = r1;
+	{ 
+	    r1:0 = memd(r10+#_R0100); 
+	    crswap (r10, sgp)
+	    jumpr r0 
+        }
 
 ENTRY(int_debug)
     LOAD32(r29, DebugStack)
-    call debug_intr_out
+    LOAD32(r3,debug_intr_out)
+    callr r3
     jump  .
 
 ENTRY(guard_debug)
@@ -1061,7 +1089,8 @@ ENTRY(guard_debug)
     r0 = memw (r0)
     r0 = elr
     r1 = r29
-    call debug_guard_out
+    LOAD32(r3,debug_guard_out)
+    callr r3
     jump  .
 
 //Anything >r1

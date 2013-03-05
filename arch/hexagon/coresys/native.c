@@ -187,7 +187,9 @@ void debug_test_out(uint32_t elr, uint32_t badva, uint32_t lr)
 	sprint_symbol(symBuf1, elr);
 	sprint_symbol(symBuf2, lr);
 	my_out("  ELR='%s' LR='%s'\r\n", symBuf1, symBuf2);
+	debug_dump_tlb_all();
 }
+	
 
 
 extern u32 tlb_debug_log;
