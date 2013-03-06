@@ -308,7 +308,7 @@ ENTRY(stext)
 // set mapping for kernel 16M temporal
 //
     	LOAD32(r1, TLB_MAKE_LO(TLB_ADDR(PHYS_OFFSET), TLB_SIZE_16M, TLB_L1WB_L2C, TLB_RWX))
-    	LOAD32(r2, TLB_MAKE_HI(TLB_ADDR(PAGE_OFFSET), 0, 0)) // global
+    	LOAD32(r2, TLB_MAKE_HI(TLB_ADDR(PAGE_OFFSET), 0, 0)) // non-global, ASID=0
 
         r0 = #TLBUSG_REPLACE_MIN
 	TLB_ENTRY_SET r0, r1, r2 // idx, lo, hi

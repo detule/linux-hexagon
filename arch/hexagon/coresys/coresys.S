@@ -424,15 +424,16 @@ exc_reset:
     sgp = r5    
 
 	r5 = #0
-	chicken = r5;      
+	chicken = r5; // who stole egg? :O     
 
 //    call    thread_start
     jump    .
 
 
 
-#if 1
+#if 0
 // old jonpry code
+// ASIDs not supported
 
 exc_tlbmiss_X:
 
@@ -452,6 +453,7 @@ exc_tlbmiss_X:
 
     //Rewrite the ssr cause field to store that this was an execute fault
     r2 = ssr
+    r6 = r2 // <<<<
     r1 = #3
     r2 = insert(r1,#8,#0)
     ssr = r2
@@ -472,6 +474,26 @@ exc_tlbmiss_X:
     //At this point, this could be a double faulting instruction
     //Check this by seeing if tlbp picks up anything
     r2 = elr
+
+
+// Cotulla test:
+#if 0
+// Hack to load TLB entries for qImage
+    LOAD32(r1, TLB_MAKE_LO(TLB_ADDR(PHYS_OFFSET), TLB_SIZE_16M, TLB_L1WB_L2C, TLB_RWX))
+    LOAD32(r2, TLB_MAKE_HI(TLB_ADDR(PAGE_OFFSET), 1, 0)) // global
+    r0 = #TLBUSG_REPLACE_MIN
+    TLB_ENTRY_SET r0, r1, r2 // idx, lo, hi
+
+    r0 = elr
+//    r1 = badva
+    r1 = r6
+    r2 = r31
+    LOAD32(r29, DebugStack)
+    LOAD32(r3, debug_error_out)
+    callr r3
+    jump    .
+#endif
+
 
     // Make TLB HI entry
     //TODO: add ASID
@@ -512,8 +534,8 @@ exc_tlbmiss_X:
 
     r1 = elr
     r2 = ssr
-    p0 = tstbit (r2, #1)
-    if (p0) r1 = add(r1, #(4 * 4))
+    p0 = tstbit (r2, #0)
+    if (p0) r1 = add(r1, #32)
 
 
     // SSR[CAUSE] = 3 to report it as an execute fault
@@ -647,13 +669,31 @@ exc_tlb_miss_common:
 // registers usage:
 // r1 - tlbmiss VA address
 // r3 - HVM page table entry (L1 or L2, both have same format)
-// r5 - HVM entry type  
+// r5 - HVM entry type (size) [0..7]
 // r6 - HW Thread ID [0..5]
 //
 exc_tlb_miss_process:
 
-// Update TLB counter
+// Handle access:
+// 1)PTE[USR] == 1 && SSR[USR] == 1: PTE_USER && CUR_USER: add entry
+// 2)PTE[USR] == 1 && SSR[USR] == 0: PTE_USER && CUR_KERN: add entry
+// 3)PTE[USR] == 0 && SSR[USR] == 1: PTE_KERN && CUR_USER: fault
+// 4)PTE[USR] == 0 && SSR[USR] == 0: PTE_KERN && CUR_KERN: add entry
 //
+   r7 = extractu(r3, #1, #__HVM_PTE_U_BIT)	// r7 = PTE[USR]
+   r2 = ssr
+   r2 = extractu(r2, #1, #SSR_BIT_ASID_USR)	// r2 = SSR[USR]
+   r7 |= asl (r2, #1)	// for PTE_KERN && CUR_USER:  r7 == 10b == 2
+   p0 = cmp.eq (r7, #2)
+   if p0 jump exc_tlb_miss_invalid   	// call page fault handler at PTE_KERN && CUR_USER
+   
+// r2 is still CUR_USER
+   r6 = asl (r6, #1)	// r6 = (HWthreadID << 1)
+   r6 = or (r6, r2) 	// r6 = (HWthreadID << 1) | ASID_USER
+ 
+
+// Update TLB counter
+//  
     LOAD32(r7, tlb_last_index)
     r2 = memw(r7)
 
@@ -679,11 +719,9 @@ exc_tlb_miss_process:
     r1 = and (r1, r7)           // apply mask to VA
     r4 = lsr (r1, #12)          // >> 12
 
-
-// CotullaTODO: handler Global bit here?
-
     r4 = setbit(r4, #TLB_HI_BIT_VALID)
-    r4 = insert (r6, #6, #20)   // ASID = HWthreadID    
+    r4 = insert (r6, #6, #TLB_HI_BIT_ASID)   // r6 = ASID = (HWthreadID << 1) | ASID_USER
+//    r4 = setbit(r4, #28)// global	
 
     
 // Make TLB LO entry
@@ -706,17 +744,12 @@ exc_tlb_miss_process:
     r7 = extractu (r3, #1, #__HVM_PTE_X_BIT)   
     r1 = insert (r7, #1, #TLB_LO_BIT_X)
 
-    p0 = tstbit (r3, #__HVM_PTE_U_BIT)    
-    r7 = mux (p0, #0, #1)
-    r1 = insert (r7, #1, #TLB_LO_BIT_SUPER)
+// Put cache bits (it is same between HVM and HW)
+//
+    r7 = extractu (r3, #3, #__HVM_PTE_C_BIT)    
+    r1 = insert (r7, #3, #TLB_LO_BIT_CACHE)
 
-
-// Put cache bits
-    r6 = extractu (r3, #3, #__HVM_PTE_C_BIT)    
-    r1 = insert (r6, #3, #TLB_LO_BIT_CACHE)
-
-
-// Put size field
+// Put size field (it is same between HVM and HW)
     r1 = insert (r5, #3, #TLB_LO_BIT_SIZE)
 
     tlbhi = r4      // VA
@@ -874,7 +907,7 @@ exc_tlb_miss_invalid:
 		/*If usermode switch to kernel stack, else borrow stack in r29*/ 
 		r1 = memw(r10 + #_RGOSP);
 		{ r1 = r29; r29 = r1; }
-		r0 = setbit(r0,#GSR_USR);
+		r0 = setbit(r0, #GSR_USR);
 1:
 	memw(r10 + #_RGOSP) = r1; 
 	memw(r10 + #_RGSR) = r0;
@@ -891,7 +924,10 @@ exc_tlb_miss_invalid:
 
 	r0 = ssr
 	r0 = clrbit(r0,#SSR_BIT_IE)
-	r0 = setbit(r0,#SSR_BIT_USR)
+	r0 = setbit(r0,#SSR_BIT_USR)	
+
+	// switch Linux User -> Linux Kernel if needed
+	r0 = clrbit(r0,#SSR_BIT_ASID_USR)
 	ssr = r0
 	isync
 

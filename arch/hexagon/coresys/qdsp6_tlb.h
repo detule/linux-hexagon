@@ -111,7 +111,7 @@ HI V2 format:
 
 
 #define TLB_HI_BIT_VALID    29
-
+#define TLB_HI_BIT_ASID     20
 
 
 

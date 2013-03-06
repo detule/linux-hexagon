@@ -264,24 +264,31 @@ trap1_rte:
 //TODO: needs to be optimized and actually work so bits can be cleared
 	r1 = memw(r10 + #_RGELR);
 	elr = r1
+
+
 	// Handle stack swap
 	//
 	r1 = memw(r10 + #_RGSR);
-	p0 = tstbit(r1,#GSR_USR);
-	//if (!p0) 
-	jump trap1_rte_non_user_mode 
+	p0 = tstbit(r1, #GSR_USR);
+	if (!p0) jump trap1_rte_non_user_mode 
 
 	// return to USER mode
 	{ r29 = memw(r10 + #_RGOSP); memw(r10 + #_RGOSP) = r29; }
-	//TODO: change ASID!
+
+	
 trap1_rte_non_user_mode:
 
 	// Modify SSR[IE], SSR[USR] here 
-	// 
+	// we hold linux kernel/user mode flag as bit0 in ASID
+	//	
 	r2 = ssr
-	r2 = setbit(r2, #SSR_BIT_USR)
+	r3 = extractu (r1, #1, #GSR_USR)
+	r2 = insert (r3, #1, #SSR_BIT_ASID_USR)	// ASID change!!
+
 	r3 = extractu (r1, #1, #GSR_IE)
 	r2 = insert (r3, #1, #SSR_BIT_IE)
+
+	r2 = setbit(r2, #SSR_BIT_USR)
 	ssr = r2;
 	isync
 

@@ -19,6 +19,8 @@
 
 #define SSR_BIT_CAUSE	0
 
+
+// we hold linux kernel/user mode flag as bit0 in ASID
 #define SSR_BIT_ASID_USR 8
 
 // SYSCFG defines
