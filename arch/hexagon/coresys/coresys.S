@@ -33,6 +33,14 @@
 
 
 
+
+#define LOAD32(reg, value)    \
+        reg.h = #HI(value);    \
+        reg.l = #LO(value)
+
+
+
+
     .macro TLB_ENTRY_SET index, regl, regh
         tlbhi = \regh
         tlblo = \regl
@@ -42,6 +50,35 @@
     .endm
 
 
+
+// Acquire TLB lock
+// used to prevent several hwthreads from accessing TLB
+//
+    .macro TLB_LOCK_ACQUIRE reg1, reg2, pred1
+        \reg1 .h = #HI(tlb_access_lock)
+        \reg1 .l = #LO(tlb_access_lock)
+
+//        LOAD32(\reg1, tlb_access_lock)
+11:
+        \reg2 = memw_locked (\reg1)
+        \pred1 = cmp.eq (\reg2, #0)
+        \reg2 = #1
+        if !\pred1 jump 11b
+        memw_locked (\reg1, \pred1) = \reg2
+        if !\pred1 jump 11b
+    .endm
+
+
+    .macro TLB_LOCK_RELEASE reg1, reg2
+        \reg1 .h = #HI(tlb_access_lock)
+        \reg1 .l = #LO(tlb_access_lock)
+
+	\reg2 = #0
+        memw (\reg1) = \reg2
+    .endm
+	
+
+
 // Get hardware thread ID
 //
     .macro GET_TID reg
@@ -49,12 +86,6 @@
 // Thread ID [0..5]
     	\reg = extractu (\reg, #3, #19)
     .endm
-
-
-#define LOAD32(reg, value)    \
-        reg.h = #HI(value);    \
-        reg.l = #LO(value)
-
 
 
 
@@ -83,15 +114,17 @@
 // during TLBMiss operation
 //
 .global tlb_last_index
-tlb_last_index: .word   TLBUSG_REPLACE_MIN
+tlb_last_index: 	.word   TLBUSG_REPLACE_MIN
 
-tlb_miss_count: .word   0
+tlb_access_lock:	.word   0
+
+tlb_miss_count: 	.word   0
 
 .global tlb_debug_log
-tlb_debug_log:  .word   0
+tlb_debug_log:  	.word   0
 
 .global last_exc_ssr
-last_exc_ssr:  .word   0
+last_exc_ssr:  		.word   0
 
 
 ///////////////////////////////////////////////////////////////////////
@@ -177,9 +210,14 @@ ENTRY(get_miss_count)
 // because called from trap1 handler directly
 //
 ENTRY(coresys_clear_tlb_replace)
+
+    TLB_LOCK_ACQUIRE r2, r3, p0
+
 // clear replacement tlb entries
+//
     r0 = #TLBUSG_REPLACE_MIN
     r2 = #0
+
 .cs_tlb_clear_lp:
     p0 = cmp.gt (r0, #TLBUSG_REPLACE_MAX)
     if p0 jump .cs_tlb_clear_exit
@@ -192,7 +230,9 @@ ENTRY(coresys_clear_tlb_replace)
     }
 
 .cs_tlb_clear_exit:
-     jumpr r31
+
+    TLB_LOCK_RELEASE r3, r2	
+    jumpr r31
    
 
 
