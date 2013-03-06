@@ -168,6 +168,8 @@ trap1_getie:
 	jump 	return_from_trap1
 	
 ///////////////////////////////////////////////////////////////////////
+// getregs doesn't use c calling conventions. no registers can be 
+// clobbered!
 trap1_getregs:
 	r3 = #0
     	memw(r10 + #_RGUARD) = r3
@@ -175,7 +177,12 @@ trap1_getregs:
 	r1 = memw(r10+#_RGSR);
 	r2 = memw(r10+#_RGOSP);
 	r3 = memw(r10+#_RGBADVA);
-	jump return_from_trap1
+	r4 = memw(r10 + #_RFLAGS);
+	p3:0 = r4
+	//R5:4 was clobbered by trap1 entry
+	r5:4 = memd(r10 + #_R0504);
+	crswap(r10, sgp)
+	rte
 
 ///////////////////////////////////////////////////////////////////////
 trap1_setregs:
