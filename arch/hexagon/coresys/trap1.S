@@ -39,6 +39,7 @@ ENTRY(exc_trap1)
 	r4 = p3:0
         memw(r10 + #_RFLAGS) = r4; 
         memw(r10 + #_R31) = r31; 	// L1
+	memd(r10 + #_R0504) = r5:4;
 	
 
 	r5 = ssr;
@@ -262,32 +263,28 @@ trap1_rte:
 	//
 	r1 = memw(r10 + #_RGSR);
 	p0 = tstbit(r1,#GSR_USR);
-	if (!p0) jump trap1_rte_non_user_mode 
+	//if (!p0) 
+	jump trap1_rte_non_user_mode 
 
 	// return to USER mode
 	{ r29 = memw(r10 + #_RGOSP); memw(r10 + #_RGOSP) = r29; }
-
+	//TODO: change ASID!
 trap1_rte_non_user_mode:
 
 	// Modify SSR[EXC], SSR[IE], SSR[USR] here 
 	// 
 	r2 = ssr
-
-	r3 = extractu (r1, #1, #GSR_USR)
-	r2 = insert (r3, #1, #SSR_BIT_USR)
-
+	r2 = setbit(r2, #SSR_BIT_USR)
 	r3 = extractu (r1, #1, #GSR_IE)
 	r2 = insert (r3, #1, #SSR_BIT_IE)
-
-	// we always set EXC bit to prevent race conditions during exit
-	//
-	r2 = setbit(r2,#SSR_BIT_EXC)
 	ssr = r2;
 	isync
 
 	//Restore r0,r10,flags
 	r0 = memw(r10 + #_RFLAGS);
 	p3:0 = r0
+	//R5:4 was clobbered by trap1 entry
+	r5:4 = memd(r10 + #_R0504);
 	r3:2 = memd(r10 + #_R0302);
 	r1:0 = memd(r10 + #_R0100);
 	crswap (r10, sgp)
