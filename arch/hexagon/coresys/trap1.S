@@ -40,7 +40,6 @@ ENTRY(exc_trap1)
         memw(r10 + #_R31) = r31; 	// LR
         r4 = p3:0
         memw(r10 + #_RFLAGS) = r4; 
-	
 
 	r5 = ssr;
 	r5 = extractu(r5, #8, #SSR_BIT_CAUSE);

@@ -227,12 +227,6 @@ ENTRY(stext)
     	r0 = #TLBUSG_DEBUG
     	TLB_ENTRY_SET r0, r1, r2 // idx, lo, hi
 
-	LOAD32(r1, TLB_MAKE_LO(TLB_ADDR((PHYS_OFFSET)), TLB_SIZE_1M, TLB_L1WB_L2C, TLB_RWX))
-	LOAD32(r2, TLB_MAKE_HI(TLB_ADDR(CORESYS_PAGE_OFFSET), 1, 0)) // global
-
-	r0 = #TLBUSG_DEBUG2
-	TLB_ENTRY_SET r0, r1, r2 // idx, lo, hi
-
 //Debug entry for hexagon timers
 #if 0
 
