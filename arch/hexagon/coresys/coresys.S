@@ -921,11 +921,12 @@ ENTRY(int_debug)
     jump  .
 
 ENTRY(guard_debug)
-    LOAD32(r29, DebugStack)
     LOAD32 (r0, last_exc_ssr)
     r0 = memw (r0)
     r0 = elr
     r1 = r29
+    r2 = r31
+    LOAD32(r29, DebugStack)
     LOAD32(r3,debug_guard_out)
     callr r3
     jump  .
