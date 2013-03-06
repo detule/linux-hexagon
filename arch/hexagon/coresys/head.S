@@ -25,13 +25,12 @@
 #include <asm/asm-offsets.h>
 #include <asm/mem-layout.h>
 #include <asm/vm_mmu.h>
+#include <asm/hexagon_vm.h>
 #include <asm/page.h>
 
 #include "qdsp6_tlb.h"
 #include "native_defs.h"
 #include "tlb_usage.h"
-
-#define CORESYS_PAGE_OFFSET 0xFF000000
 
 /*
 Startup tasks:
@@ -80,6 +79,11 @@ Startup tasks:
 __initrd_sign:   .word 0
 __initrd_start:  .word 0
 __initrd_size:   .word 0
+
+	.fill (4 * 1024 - 12), 1, 0
+
+	LOAD32(r0, PHYS_OFFSET + ENTRY_OFFSET)
+	jumpr	r0
 
 
 
@@ -165,13 +169,21 @@ ENTRY(stext)
 
 
 
-// 1. setup TLB#0 mapping for kernel.
+// 1. setup TLB#0 mapping for CoreSys.
 // NOTE: lowmem seems must be mapped continously. 
 // this code works only if RAM size >= 16M.
 // the rest (RAM_SIZE - 16M) must be mapped somewhere else during boot
 //
-    	LOAD32(r1, TLB_MAKE_LO(TLB_ADDR(PHYS_OFFSET), TLB_SIZE_16M, TLB_L1WB_L2C, TLB_RWX))
-    	LOAD32(r2, TLB_MAKE_HI(TLB_ADDR(PAGE_OFFSET), 1, 0)) // global
+#if CORESYS_PHYSICAL & (0x10000 - 1)
+#error CORESYS_PHYSICAL must be aligned to 64K
+#endif
+#if CORESYS_VIRTUAL & (0x10000 - 1)
+#error CORESYS_VIRTUAL must be aligned to 64K
+#endif
+
+// CotullaTODO: remove R later to prevent user mode from reading coresys?
+    	LOAD32(r1, TLB_MAKE_LO(TLB_ADDR(CORESYS_PHYSICAL), TLB_SIZE_64K, TLB_L1WB_L2C, TLB_RWX))
+    	LOAD32(r2, TLB_MAKE_HI(TLB_ADDR(CORESYS_VIRTUAL), 1, 0)) // global
 
         r0 = #TLBUSG_CORE
 	TLB_ENTRY_SET r0, r1, r2 // idx, lo, hi
@@ -191,17 +203,16 @@ ENTRY(stext)
 //
 
 // GPIO VIBRO 
-//	LOAD32(r1, TLB_MAKE_LO(TLB_ADDR(0xA9000000), TLB_SIZE_1M, TLB_UC, TLB_RWX))
-//	LOAD32(r2, TLB_MAKE_HI(TLB_ADDR(0xA9000000), 1, 0)) // global
+	LOAD32(r1, TLB_MAKE_LO(TLB_ADDR(0xA9000000), TLB_SIZE_1M, TLB_UC, TLB_RWX))
+	LOAD32(r2, TLB_MAKE_HI(TLB_ADDR(0xA9000000), 1, 0)) // global
 
 // TIMERS
 //	LOAD32(r1, TLB_MAKE_LO(TLB_ADDR(0xAB000000), TLB_SIZE_1M, TLB_UC, TLB_RWX))
 //	LOAD32(r2, TLB_MAKE_HI(TLB_ADDR(0xAB000000), 1, 0)) // global
 
 // SCREEN CONSOLE
-	LOAD32(r1, TLB_MAKE_LO(TLB_ADDR(0x02A00000), TLB_SIZE_1M, TLB_L1WB_L2C, TLB_RWX))
-//	LOAD32(r1, TLB_MAKE_LO(TLB_ADDR(0x02A00000), TLB_SIZE_1M, TLB_L1WB_L2C, TLB_R))
-	LOAD32(r2, TLB_MAKE_HI(TLB_ADDR(0xF0300000), 1, 0)) // global
+//	LOAD32(r1, TLB_MAKE_LO(TLB_ADDR(0x02A00000), TLB_SIZE_1M, TLB_L1WB_L2C, TLB_RWX))
+//	LOAD32(r2, TLB_MAKE_HI(TLB_ADDR(0xF0300000), 1, 0)) // global
 
 	r0 = #TLBUSG_DEBUG2
 	TLB_ENTRY_SET r0, r1, r2 // idx, lo, hi
@@ -233,6 +244,52 @@ ENTRY(stext)
 
 #endif
 
+
+// init page tables
+// clear L1 kernel page table
+// fill it with __HVM_PDE_S_INVALID
+//
+	// setup initial page table
+        LOAD32(r0, swapper_pg_dir)
+	// convert VA -> PA
+        // PA = VA - PAGE_OFFSET + PHYS_OFFSET
+        // PA = VA + (PHYS_OFFSET - PAGE_OFFSET)
+	// C010 0000 -> 1010 0000       
+        LOAD32(r1, (PHYS_OFFSET - PAGE_OFFSET))
+        r0 = add (r0, r1) 
+        r4 = r0
+
+
+	r1 = #__HVM_PDE_S_INVALID
+	r3 = #1024	// 1024 entries in L1, each 4M  
+	loop0(3f, r3)
+3:
+	{
+		memw(r0 ++ #4) = r1
+	}:endloop0
+
+
+// put kernel 16M entry
+//
+#define PTE_BITS ( __HVM_PTE_R | __HVM_PTE_W | __HVM_PTE_X	\
+		  | __HEXAGON_C_WB_L2 << 6			\
+		  | __HVM_PDE_S_16MB)
+
+	LOAD32(r1, PAGE_OFFSET >> 22)	// >> 22 same as / 4M
+	r4 += asl (r1, #2)	// entry size is 4
+
+	LOAD32(r5, PTE_BITS)
+	LOAD32(r2, PHYS_OFFSET)
+	r5 = or (r2, r5) 
+
+	// 16M must be repeated 4 times
+	memw (r4 ++ #4) = r5
+	memw (r4 ++ #4) = r5
+	memw (r4 ++ #4) = r5
+	memw (r4 ++ #4) = r5
+		
+
+
 // 2. setup kernel identity map:
 // detect current address by PC and map 1M entry
 // to TLB#1. it will be cleared back later.
@@ -253,6 +310,17 @@ ENTRY(stext)
 	r0 = #TLBUSG_INDENTITY
 	TLB_ENTRY_SET r0, r1, r2 // idx, lo, hi
 
+
+// set mapping for kernel 16M temporal
+//
+    	LOAD32(r1, TLB_MAKE_LO(TLB_ADDR(PHYS_OFFSET), TLB_SIZE_16M, TLB_L1WB_L2C, TLB_RWX))
+    	LOAD32(r2, TLB_MAKE_HI(TLB_ADDR(PAGE_OFFSET), 0, 0)) // global
+
+        r0 = #TLBUSG_REPLACE_MIN
+	TLB_ENTRY_SET r0, r1, r2 // idx, lo, hi
+
+
+
 // Enable TLB/MMU 
 //		
         r0 = syscfg
@@ -264,20 +332,44 @@ ENTRY(stext)
 	LOAD32(r31, __head_s_vaddr_target);
 	jumpr r31
 
+
 	/*  Insert trippy space effects.  */
 __head_s_vaddr_target:
 
-	// coresys init - sw mmu init
-	//
-	LOAD32(r3,coresys_init)
-	callr r3
-	
 	// remove indentify mapping here
 	//
 	
 	r2 = #0
 	r0 = #TLBUSG_INDENTITY
 	TLB_ENTRY_SET r0, r2, r2 // idx, lo, hi
+
+
+	// coresys init
+	// starts SW MMU
+	// call coresys directly
+ 	// page table must be already inited
+	// SUPERVISOR MODE 
+
+	LOAD32(r3, coresys_init)
+	callr r3
+
+	// returns in USER MODE
+
+
+ 	// setup initial page table
+        LOAD32(r0, swapper_pg_dir)
+	// convert VA -> PA
+        // PA = VA - PAGE_OFFSET + PHYS_OFFSET
+        // PA = VA + (PHYS_OFFSET - PAGE_OFFSET)
+	// C010 0000 -> 1010 0000       
+        LOAD32(r1, (PHYS_OFFSET - PAGE_OFFSET))
+        r0 = add (r0, r1)	// PA address of page table 
+
+	trap1(#HVM_TRAP1_VMNEWMAP);	// coresys_newmap
+
+	//
+	// here should be the first tlb miss fault
+	//
 
 	/*
 	 * OK, at this point we should start to be much more careful,
@@ -314,18 +406,8 @@ __head_s_vaddr_target:
 	r2 = sub(r2,r0);
 	call memset;
 
-
- 	// setup initial page table
-        LOAD32(r0, swapper_pg_dir)
-	// convert VA -> PA
-        // PA = VA - PAGE_OFFSET + PHYS_OFFSET
-        // PA = VA + (PHYS_OFFSET - PAGE_OFFSET)
-	// C010 0000 -> 1010 0000       
-        LOAD32(r1, (PHYS_OFFSET - CORESYS_PAGE_OFFSET))
-        r0 = add (r0, r1) 
-
-	LOAD32(r3,coresys_newmap)
-	callr r3
+//	LOAD32(r3,coresys_newmap)
+//	callr r3
 
 
 // Cotulla: Test LEO bzZZzz code    
@@ -377,4 +459,17 @@ ENTRY(external_cmdline_buffer)
 ENTRY(empty_zero_page)
         .fill _PAGE_SIZE,1,0
 
+
+
+// kernel L1 PTE - 1024 entries, each describes 4M
+// must be aligned to 4096 bytes
+//
+// linux generic mm code rely to that global variable
+// it's used as init_mm.pgd value
+//
+    .data
+    .p2align 12
+    .globl swapper_pg_dir
+swapper_pg_dir:
+    .fill (4 * 1024), 1, 0
 

@@ -200,8 +200,9 @@ static inline long __vmintop_clear(long i)
 #define MY_TRAP1_INT_INIT		29
 #define MY_TRAP1_INT_SETTYPE		30
 #define MY_TRAP1_INT_SETPOL 		31
+#define MY_TRAP1_INIT 			32
 
-#define MY_TRAP1_MAX			31
+#define MY_TRAP1_MAX			32
 
 
 #endif /* __ASSEMBLY__ */

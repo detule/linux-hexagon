@@ -44,16 +44,17 @@
 
 #endif
 
-/*
- * LOAD_ADDRESS is the physical/linear address of where in memory
- * the kernel gets loaded. The 12 least significant bits must be zero (0)
- * due to limitations on setting the EVB
- *
- */
 
-#ifndef LOAD_ADDRESS
-#define LOAD_ADDRESS			0x00000000
-#endif
+/* CoreSys located on the 64K fixed TLB entry, so address must be aligned to 64K */
+#define CORESYS_OFFSET  	0x10000
+#define ENTRY_OFFSET 		(CORESYS_OFFSET + 0x10000)
+
+#define CORESYS_VIRTUAL		_AC(0xFF000000, UL) 
+#define CORESYS_PHYSICAL 	(PHYS_OFFSET + CORESYS_OFFSET)
+
+
+
+
 
 #define TASK_SIZE			(PAGE_OFFSET)
 

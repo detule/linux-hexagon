@@ -71,10 +71,10 @@ static void *hexagon_dma_alloc_coherent(struct device *dev, size_t size,
 				hexagon_coherent_pool_start,
 				hexagon_coherent_pool_size, -1);
 	}
-	printk("hexagon_dma_alloc_coherent2 %X %X\n", hexagon_coherent_pool_start, hexagon_coherent_pool_size);
+	printk("hexagon_dma_alloc_coherent2 %X %X\n", (u32)hexagon_coherent_pool_start, (u32)hexagon_coherent_pool_size);
 
 	ret = (void *) gen_pool_alloc(coherent_pool, size);
-	printk("hexagon_dma_alloc_coherent3 %X\n", ret);
+	printk("hexagon_dma_alloc_coherent3 %X\n", (u32)ret);
 
 	if (ret) {
 		memset(ret, 0, size);
@@ -222,8 +222,7 @@ struct dma_map_ops hexagon_dma_ops = {
 int __init hexagon_dma_init(void)
 {
 	printk("hexagon_dma_init\n");
-	if (dma_ops)
-		return;
+	if (dma_ops) return 0;
 
 	dma_ops = &hexagon_dma_ops;
 	return 0;
