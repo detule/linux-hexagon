@@ -36,10 +36,12 @@
 ENTRY(exc_trap1)
 	//Decode cause
 	crswap (r10, sgp);
-	r4 = p3:0
-        memw(r10 + #_RFLAGS) = r4; 
+	{
+	   r4 = p3:0
+	   memd(r10 + #_R0504) = r5:4;
+        }
+       	memw(r10 + #_RFLAGS) = r4; 
         memw(r10 + #_R31) = r31; 	// L1
-	memd(r10 + #_R0504) = r5:4;
 	
 
 	r5 = ssr;
@@ -186,10 +188,10 @@ trap1_getregs:
 
 ///////////////////////////////////////////////////////////////////////
 trap1_setregs:
-	elr = r0
+	memw(r10 + #_RGELR) = r0
 	memw(r10 + #_RGSR) = r1;
 	memw(r10 + #_RGOSP) = r2;
-	badva = r3
+	memw(r10 + #_RGBADVA) = r3
 	jump return_from_trap1
 
 ///////////////////////////////////////////////////////////////////////

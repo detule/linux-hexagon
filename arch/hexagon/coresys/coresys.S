@@ -898,7 +898,7 @@ exc_tlb_miss_invalid:
 
 	r0 = ssr
 	r0 = clrbit(r0,#SSR_BIT_IE)
-	r0 = clrbit(r0,#SSR_BIT_USR)
+	r0 = setbit(r0,#SSR_BIT_USR)
 	ssr = r0
 	isync
 
