@@ -189,7 +189,6 @@ trap1_setregs:
 // 2)set SSR bits according to GSR
 //
 trap1_rte:
-	crswap (r10, sgp)
 	memd (r10 + #_R0100) = r1:0
 	memd (r10 + #_R0302) = r3:2
 	r0 = p3:0
