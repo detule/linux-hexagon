@@ -36,10 +36,10 @@
 ENTRY(exc_trap1)
 	//Decode cause
 	crswap (r10, sgp);
-	r4 = p3:0
-        memw(r10 + #_RFLAGS) = r4; 
-        memw(r10 + #_R31) = r31; 	// L1
 	memd(r10 + #_R0504) = r5:4;
+        memw(r10 + #_R31) = r31; 	// LR
+        r4 = p3:0
+        memw(r10 + #_RFLAGS) = r4; 
 	
 
 	r5 = ssr;
@@ -173,23 +173,24 @@ trap1_getie:
 trap1_getregs:
 	r3 = #0
     	memw(r10 + #_RGUARD) = r3
-	r0 = memw(r10+#_RGELR);
-	r1 = memw(r10+#_RGSR);
-	r2 = memw(r10+#_RGOSP);
-	r3 = memw(r10+#_RGBADVA);
+	r0 = memw(r10 + #_RGELR);
+	r1 = memw(r10 + #_RGSR);
+	r2 = memw(r10 + #_RGOSP);
+	r3 = memw(r10 + #_RGBADVA);
 	r4 = memw(r10 + #_RFLAGS);
 	p3:0 = r4
 	//R5:4 was clobbered by trap1 entry
+	// R31 is not touched
 	r5:4 = memd(r10 + #_R0504);
 	crswap(r10, sgp)
 	rte
 
 ///////////////////////////////////////////////////////////////////////
 trap1_setregs:
-	elr = r0
-	memw(r10 + #_RGSR) = r1;
-	memw(r10 + #_RGOSP) = r2;
-	badva = r3
+	memw(r10 + #_RGELR) = r0
+	memw(r10 + #_RGSR) = r1
+	memw(r10 + #_RGOSP) = r2
+	memw(r10 + #_RGBADVA) = r3
 	jump return_from_trap1
 
 ///////////////////////////////////////////////////////////////////////
@@ -254,8 +255,6 @@ trap1_init:
 trap1_rte:
 	memd (r10 + #_R0100) = r1:0
 	memd (r10 + #_R0302) = r3:2
-	r0 = p3:0
-	memw(r10 + #_RFLAGS) = r0
 
 //TODO: Ensure that atomic operation in progress at exception time will fail
 #if 0
@@ -278,7 +277,7 @@ trap1_rte:
 	//TODO: change ASID!
 trap1_rte_non_user_mode:
 
-	// Modify SSR[EXC], SSR[IE], SSR[USR] here 
+	// Modify SSR[IE], SSR[USR] here 
 	// 
 	r2 = ssr
 	r2 = setbit(r2, #SSR_BIT_USR)

@@ -838,9 +838,12 @@ exc_tlb_miss_invalid:
 
 
 
+#define VEC_FAULT (2*4)
+#define VEC_TRAP0 (5*4)
+#define VEC_INT   (7*4)
 
 
-    .macro EXCEPTION_ENTER_HEAD 
+    .macro EXCEPTION_ENTER_HEAD   hndl_off
         crswap (r10, sgp);
         { 
            r0 = p3:0 ; 
@@ -853,8 +856,6 @@ exc_tlb_miss_invalid:
 	/*set the usr mode bit and interupt enable bit in _RGSR */ 
 	r0 = #0; // r0 holds GSR
 
-#if 1
-	// langpoo's way is one way
 	r1 = ssr; 
 	r1 = extractu (r1, #1, #SSR_BIT_IE)
 	r0 = insert (r1, #1, #GSR_IE)
@@ -864,15 +865,7 @@ exc_tlb_miss_invalid:
 	r1 = extractu (r1, #8, #SSR_BIT_CAUSE)
 	r0 = insert (r1, #16, #GSR_CAUSE) // HVM_VMEST_CAUSE_MSK = 0xFFFF
 
-#else         	
-	// but jonpry's classic way is here!
-	r1 = ssr
-	p0 = tstbit(r1, #SSR_BIT_IE)
-	if (!p0) jump 1f
-		r0 = setbit(r0, #GSR_IE)
-1:
-	
-#endif	
+
 	r1 = ssr
 	p0 = tstbit(r1,#SSR_BIT_ASID_USR); 
 	r1 = r29; 
@@ -898,7 +891,7 @@ exc_tlb_miss_invalid:
 
 	r0 = ssr
 	r0 = clrbit(r0,#SSR_BIT_IE)
-	r0 = clrbit(r0,#SSR_BIT_USR)
+	r0 = setbit(r0,#SSR_BIT_USR)
 	ssr = r0
 	isync
 
@@ -912,47 +905,33 @@ exc_tlb_miss_invalid:
 	r0 = #1
 	memw(r10+#_RGUARD) = r0;
 
+	// call linux kernel handler 
+	// by using GEVB table
+	//
+	LOAD32(r0,coresys_gevb)
+	r0 = memw(r0)
+	r0 = add(r0, # \hndl_off)
+	elr = r0
 
-    .endm
-
-#define VEC_FAULT (2*4)
-#define VEC_TRAP0 (5*4)
-#define VEC_INT   (7*4)
-
-exc_done:
 	/*Restore r0,r10,flags*/
 	r1 = memw(r10+#_RFLAGS);
 	p3:0 = r1;
 	r1:0 = memd(r10+#_R0100); 
 	crswap (r10, sgp)
 	rte
+    .endm
+
 
 exc_fault:
-//	jump exc_test
- 	EXCEPTION_ENTER_HEAD;
-	LOAD32(r0,coresys_gevb)
-	r0 = memw(r0)
-	r0 = add(r0, #VEC_FAULT)
-	elr = r0
-	jump exc_done
+ 	EXCEPTION_ENTER_HEAD VEC_FAULT;
 
 exc_int:
-//	jump int_debug
- 	EXCEPTION_ENTER_HEAD;
-	LOAD32(r0,coresys_gevb)
-	r0 = memw(r0)
-	r0 = add(r0, #VEC_INT)
-	elr = r0
-	jump exc_done
+	rte
+// 	EXCEPTION_ENTER_HEAD VEC_INT;
 
 exc_trap0:
-//	jump int_debug
-	EXCEPTION_ENTER_HEAD;
-	LOAD32(r0,coresys_gevb)
-	r0 = memw(r0)
-	r0 = add(r0, #VEC_TRAP0)
-	elr = r0
-	jump exc_done
+	EXCEPTION_ENTER_HEAD VEC_TRAP0;
+
 
 ENTRY(int_debug)
     LOAD32(r29, DebugStack)
