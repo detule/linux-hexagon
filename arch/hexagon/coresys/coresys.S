@@ -834,7 +834,7 @@ exc_tlb_miss_invalid:
 	
 #endif	
 	r1 = ssr
-	p0 = tstbit(r1,#SSR_BIT_USR); 
+	p0 = tstbit(r1,#SSR_BIT_ASID_USR); 
 	r1 = r29; 
 	if(!p0) jump 1f;
 
