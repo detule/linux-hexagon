@@ -177,11 +177,12 @@ void debug_intr_out(uint32_t elr, uint32_t lr)
 	my_out("  ELR='%s' LR='%s'\r\n", symBuf1, symBuf2);
 }
 
-void debug_guard_out(uint32_t elr, uint32_t r29)
+void debug_guard_out(uint32_t elr, uint32_t r29, u32 lr)
 {
-	my_out("GUARD: ELR=%08X R29=%08X SSR=%X\r\n", elr, r29, get_ssr());
+	my_out("GUARD: ELR=%08X R29=%08X LR=%08X SSR=%X\r\n", elr, r29, lr, get_ssr());
 	sprint_symbol(symBuf1, elr);
-	my_out("  ELR='%s'\r\n", symBuf1);
+	sprint_symbol(symBuf2, lr);
+	my_out("  ELR='%s' LR='%s'\r\n", symBuf1, symBuf2);
 }
 
 void debug_trap1_out(uint32_t trap, uint32_t elr)
