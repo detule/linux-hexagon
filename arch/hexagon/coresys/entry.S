@@ -153,8 +153,7 @@
 	} \
 	memd(R29 +#_PT_R0504) = R5:4; \
 	memd(R29 + #_PT_R3130) = R31:30; \
-	LOAD32(r0, coresys_getregs); \
-	callr r0; \
+	trap1(#HVM_TRAP1_VMGETREGS); \
 	{ \
 		memd(R29 + #_PT_ER_VMEL) = R1:0; \
 		R0 = R29; \
@@ -168,17 +167,6 @@
 		jump event_dispatch; \
 	}
 
-/*
- * Disable interrupts without using hypervisor
- * Duplicated here from native_ops so that we don't need to clobber the 
- * link register
- */
-
-#define DISABLE_INTS_R0  r0 = ssr ;\
-	r0 = clrbit (r0, #SSR_BIT_IE) ;\
-	ssr = r0 \
-
-
 .text
 	/*
 	 * Do bulk save/restore in one place.
@@ -188,8 +176,6 @@
 
 event_dispatch:
 	save_pt_regs()
-	LOAD32(r9, coresys_clear_guard);
-	callr r9
 
 	callr	r1
 
@@ -223,7 +209,8 @@ event_dispatch:
 	 */
 return_from_syscall:
 	/*  Disable interrupts while checking TIF  */
-	DISABLE_INTS_R0;
+	R0 = #VM_INT_DISABLE
+	trap1(#HVM_TRAP1_VMSETIE)
 
 	/*
 	 * Coming back from the C-world, our thread info pointer
@@ -261,27 +248,23 @@ work_notifysig:
 
 restore_all:
 	/* Disable interrupts, if they weren't already, before reg restore.  */
-	DISABLE_INTS_R0;
+	R0 = #VM_INT_DISABLE
+	trap1(#HVM_TRAP1_VMSETIE)
 
 	/*  do the setregs here for VM 0.5  */
 	/*  R29 here should already be pointing at pt_regs  */
 	R1:0 = memd(R29 + #_PT_ER_VMEL);
 	R3:2 = memd(R29 + #_PT_ER_VMPSP);
 
-	LOAD32(r4, coresys_setregs)
-	callr r4;
+	trap1(#HVM_TRAP1_VMSETREGS)
 
 	R0 = R29
 	restore_pt_regs()
-	LOAD32(r0,coresys_rte)
-
 	{
 		R1:0 = memd(R29 + #_PT_R0100);
 		R29 = add(R29, #_PT_REGS_SIZE);
-
-		//jump to coresys for rte
-		jumpr r0;
 	}
+	trap1(#HVM_TRAP1_VMRTE)
 	/* Notreached */
 
 	.globl _K_enter_genex

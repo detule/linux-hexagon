@@ -41,16 +41,16 @@ ENTRY(exc_trap1)
         memw(r10 + #_R31) = r31; 	// L1
 	
 
-	r4 = ssr;
-	r4 = extractu(r4, #8, #SSR_BIT_CAUSE);
+	r5 = ssr;
+	r5 = extractu(r5, #8, #SSR_BIT_CAUSE);
 
 	//Largest trap is MY_TRAP1_MAX
-	p0 = cmp.gt(r4, #MY_TRAP1_MAX)
-	if(p0) jump error_no_trap
+	p0 = cmp.gt(r5, #MY_TRAP1_MAX)
+	if (p0) jump error_no_trap
 
-	LOAD32(r5,trap_base)
-	r5 += asl(r4, #2)
-	jumpr r5
+	LOAD32(r4,trap_base)
+	r4 += asl(r5, #2)
+	jumpr r4
 
 trap_base:
 	jump error_no_trap	//0
@@ -74,8 +74,8 @@ trap_base:
 	jump error_no_trap	//HVM_TRAP1_VMSTART		18
 	jump error_no_trap	//HVM_TRAP1_VMSTOP		19
 	jump error_no_trap	//HVM_TRAP1_VMVPID		20      NOT USED
-	jump error_no_trap	//HVM_TRAP1_VMSETREGS		21
-	jump error_no_trap	//HVM_TRAP1_VMGETREGS		22
+	jump trap1_setregs	//HVM_TRAP1_VMSETREGS		21
+	jump trap1_getregs	//HVM_TRAP1_VMGETREGS		22
 
 	jump trap1_int_gtoggle	//MY_TRAP1_INT_GTOGGLE		23
 	jump trap1_int_cfg      //MY_TRAP1_INT_CFG		24
@@ -166,7 +166,23 @@ trap1_getie:
 	r0 = extractu (r1, #1, #SSR_BIT_IE)
 	jump 	return_from_trap1
 	
+///////////////////////////////////////////////////////////////////////
+trap1_getregs:
+	r3 = #0
+    	memw(r10 + #_RGUARD) = r3
+	r0 = memw(r10+#_RGELR);
+	r1 = memw(r10+#_RGSR);
+	r2 = memw(r10+#_RGOSP);
+	r3 = memw(r10+#_RGBADVA);
+	jump return_from_trap1
 
+///////////////////////////////////////////////////////////////////////
+trap1_setregs:
+	elr = r0
+	memw(r10 + #_RGSR) = r1;
+	memw(r10 + #_RGOSP) = r2;
+	badva = r3
+	jump return_from_trap1
 
 ///////////////////////////////////////////////////////////////////////
 trap1_int_gtoggle:
@@ -228,7 +244,6 @@ trap1_init:
 // 2)set SSR bits according to GSR
 //
 trap1_rte:
-	crswap (r10, sgp)
 	memd (r10 + #_R0100) = r1:0
 	memd (r10 + #_R0302) = r3:2
 	r0 = p3:0
@@ -241,7 +256,8 @@ trap1_rte:
 #endif
 //deal with gsr
 //TODO: needs to be optimized and actually work so bits can be cleared
-
+	r1 = memw(r10 + #_RGELR);
+	elr = r1
 	// Handle stack swap
 	//
 	r1 = memw(r10 + #_RGSR);
@@ -249,9 +265,7 @@ trap1_rte:
 	if (!p0) jump trap1_rte_non_user_mode 
 
 	// return to USER mode
-	r0 = memw(r10 + #_RGOSP);
-	memw(r10 + #_RGOSP) = r29;
-	{ r0 = r29; r29 = r0; } // TODO: enough r29 = r0?
+	{ r29 = memw(r10 + #_RGOSP); memw(r10 + #_RGOSP) = r29; }
 
 trap1_rte_non_user_mode:
 
@@ -283,9 +297,8 @@ trap1_rte_non_user_mode:
 ///////////////////////////////////////////////////////////////////////
 //    D A T A    D E F I N I T I O N S
 ///////////////////////////////////////////////////////////////////////
-
-	
-coresys_gevb:	.word	0
+.global coresys_gevb
+coresys_gevb: .word 0
 
 
 
