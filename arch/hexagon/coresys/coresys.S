@@ -71,12 +71,12 @@
 #define L2FETCH_TLB_HI      TLB_MAKE_HI(TLB_ADDR(L2FETCH_ADDRESS), 1, 0)  // global = 1, ASID = 0
 #define L2FETCH_TLB_LO      TLB_MAKE_LO(0, TLB_SIZE_4K, TLB_L1WB_L2C, TLB_R) // without actual PA address
 
-//	__CPUINIT
+
+	.section	".coresys.head", "ax"
+    	.ascii  "Q6SM"      // signature
+
+
 	.section	".coresys", "ax"
-
-ENTRY(_SW_MMU_START)
-
-    .ascii  "Q6SM"      // signature
 
 
 // this global variable holds last changed TLB index
@@ -93,178 +93,10 @@ tlb_debug_log:  .word   0
 .global last_exc_ssr
 last_exc_ssr:  .word   0
 
-///////////////////////////////////////////////////////////////////////
-//    I N T E R R U P T     C O D E 
-///////////////////////////////////////////////////////////////////////
-
-// interrupts init
-//
-ENTRY(coresys_int_init)
-    r0 = #0
-    imask = r0
-
-    r1 = #-1
-    iel = r1
-    iahl = r1
-    cswi (r1)
-    ciad (r1)
-    imask = r1
-    isync
-    jumpr r31
-
-
-
-// r0 - interrupt number
-// r1 - 1 active high
-//      0 active low
-//
-ENTRY(coresys_int_setpolarity)
-
-// get bit clear mask
-    r3 = #1
-    r3 = asl (r3, r0)	// r3 = 1 << intr
-    r3 = sub (#-1, r3)  // r3 = 0xFFFF FFFF - (1 << intr)
-
-// modify    
-    r2 = iahl
-    r2 = and (r2, r3)	// clear bit
-    r2 |= asl (r1, r0)	// set new value
-    iahl = r2
-
-    isync
-    jumpr r31
-
-
-
-// r0 - interrupt number
-// r1 - 1 edge
-//      0 level
-//
-ENTRY(coresys_int_settype)
-
-// get bit clear mask
-    r3 = #1
-    r3 = asl (r3, r0)	// r3 = 1 << intr
-    r3 = sub (#-1, r3)  // r3 = 0xFFFF FFFF - (1 << intr)
-
-// modify    
-    r2 = iel
-    r2 = and (r2, r3)	// clear bit
-    r2 |= asl (r1, r0)	// set new value
-    iel = r2
-
-    isync
-    jumpr r31
-
-
-// r0 - interrupt number
-// r1 - mask
-//
-ENTRY(coresys_int_cfg)
-
-    r0 = and (r0, #31) 
-    r0 = sub (#31, r0)
-	
-    r2 = asl (r0, #16)
-    r1 = or (r2, r1)
-    iassignw (r1)	
-    jumpr r31
-
-
-
-// r0 - interrupt number
-//
-ENTRY(coresys_int_done)
-
-    r0 = and (r0, #31) 
-    r0 = sub (#31, r0)
-	
-    r1 = #0 
-    r1 = setbit (r1, r0)
-
-    ciad (r1)	
-    jumpr r31
-
-
-// r0 - interrupt number
-//
-ENTRY(coresys_int_raise)
-
-    r0 = and (r0, #31) 
-    r0 = sub (#31, r0)
-	
-    r1 = #0 
-    r1 = setbit (r1, r0)
-
-    swi (r1)	
-    jumpr r31
-
-
-ENTRY(coresys_int_pending)
-    r0 = ipend
-    jumpr r31
-
-
-// r0 - interrupt number
-//
-ENTRY(coresys_int_enable)
-
-    r0 = and (r0, #31) 
-    r0 = sub (#31, r0)
-
-    r2 = imask
-    r2 = clrbit (r2, r0)
-    imask = r2
-
-    r1 = #0 
-    r1 = setbit (r1, r0)
-    ciad (r1)	
-
-    jumpr r31
-
-
-
-// r0 - interrupt number
-//
-ENTRY(coresys_int_disable)
-
-    r0 = and (r0, #31) 
-    r0 = sub (#31, r0)
-
-    r2 = imask
-    r2 = setbit (r2, r0)
-    imask = r2
-
-    jumpr r31
-
-
-// r0 - 0 disable, 1 enable
-//
-ENTRY(coresys_int_gtoggle)
-   
-    r1 = syscfg
-    r1 = insert(r0, #1, #SYSCFG_GIE)
-    syscfg = r1
-
-    jumpr r31
-
-
-// r0 - 0 disable, 1 enable
-//
-ENTRY(coresys_int_ltoggle)
-   
-    r1 = ssr
-    r1 = insert(r0, #1, #SSR_BIT_IE)
-    ssr = r1
-
-    jumpr r31
-
-
 
 ///////////////////////////////////////////////////////////////////////
 //    S W    M M U     & &    E X C E P T I O N S 
 ///////////////////////////////////////////////////////////////////////
-
 
 
 
@@ -276,6 +108,7 @@ ENTRY(coresys_int_ltoggle)
 ENTRY(coresys_init)
     LOAD32(r0, exc_vectors)
     evb = r0
+
 
 // Clear data storage
 //
@@ -300,23 +133,11 @@ ENTRY(coresys_init)
     }:endloop0
 
 
-// clear L1 kernel page table
-// fill it with __HVM_PDE_S_INVALID
-//
-    LOAD32(r0, swapper_pg_dir)
-    r1 = #__HVM_PDE_S_INVALID
-    r3 = #1024	// 1024 entries in L1, each 4M  
-    loop0(3f, r3)
-3:
-    {
-	memw(r0 ++ #4) = r1
-    }:endloop0
-
     	
     GET_TID r6
 
-// Setup SGP value
-//
+    // Setup SGP value
+    //
     r4 = #SUPER_WORLD_SIZE
     r4 = mpyi (r6, r4)              // r4 - Offset in bytes 
 
@@ -324,7 +145,22 @@ ENTRY(coresys_init)
     r5 = add (r5, r4)
     sgp = r5          
 
-    jumpr r31
+
+    // change mode to USER
+    // SSR[EXC] = 1 SSR[USR] = 1
+    //
+    r1 = ssr
+    r1 = clrbit(r1, #SSR_BIT_IE)
+    r1 = setbit(r1, #SSR_BIT_USR)
+    r1 = setbit(r1, #SSR_BIT_EXC)
+    ssr = r1	
+
+
+    // return from exception
+    // SSR[EXC] = 0, activates user mode
+    // 
+    elr = r31
+    rte
 
 
 
@@ -535,18 +371,6 @@ exc_test:
 // called when HW thread core started by start (r0) command
 //
 exc_reset:
-
-// CotullaTODO
-#if 0
-// setup GP pointer
-    LOAD32(r0, __default_sda_base__)
-    gp = r0
-
-// setup stack pointer
-    LOAD32(r0, 0x11900000 - 16)
-    r29 = r0
-
-#endif
 
     GET_TID r6
 
@@ -861,6 +685,7 @@ exc_tlb_miss_process:
     tlbw
     isync        
 
+
 // return code
 //
     p3:0  = r0
@@ -1062,7 +887,7 @@ exc_fault:
 	p3:0 = r1;
 	{ 
 	    r1:0 = memd(r10+#_R0100); 
-	    crswap (r10, sgp)
+//	    crswap (r10, sgp)
 	    jumpr r0 
         }
 
@@ -1075,7 +900,7 @@ exc_int:
 	p3:0 = r1;
 	{ 
 	    r1:0 = memd(r10+#_R0100); 
-	    crswap (r10, sgp)
+//	    crswap (r10, sgp)
 	    jumpr r0 
         }
 
@@ -1088,7 +913,7 @@ exc_trap0:
 	p3:0 = r1;
 	{ 
 	    r1:0 = memd(r10+#_R0100); 
-	    crswap (r10, sgp)
+//	    crswap (r10, sgp)
 	    jumpr r0 
         }
 
@@ -1184,18 +1009,6 @@ DebugStack:
     .globl DebugLog
 DebugLog:
     .fill (4096), 1, 0
-
-
-// kernel L1 PTE - 1024 entries, each describes 4M
-// must be aligned to 4096 bytes
-//
-// linux generic mm code rely to that global variable
-// it's used as init_mm.pgd value
-//
-    .p2align 12
-    .globl swapper_pg_dir
-swapper_pg_dir:
-    .fill (4 * 1024), 1, 0
 
 
 ENTRY(_SW_MMU_END)

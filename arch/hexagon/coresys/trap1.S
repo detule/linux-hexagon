@@ -31,6 +31,7 @@
 ///////////////////////////////////////////////////////////////////////
 // trap1 modify r0-r4 registers
 // like ABI function call
+// r0 and r1 are parameters
 //
 ENTRY(exc_trap1)
 	//Decode cause
@@ -40,16 +41,16 @@ ENTRY(exc_trap1)
         memw(r10 + #_R31) = r31; 	// L1
 	
 
-	r0 = ssr;
-	r0 = extractu(r0, #8, #SSR_BIT_CAUSE);
+	r4 = ssr;
+	r4 = extractu(r4, #8, #SSR_BIT_CAUSE);
 
 	//Largest trap is MY_TRAP1_MAX
-	p0 = cmp.gt(r0, #MY_TRAP1_MAX)
+	p0 = cmp.gt(r4, #MY_TRAP1_MAX)
 	if(p0) jump error_no_trap
 
-	LOAD32(r1,trap_base)
-	r1 += asl(r0,#2)
-	jumpr r1
+	LOAD32(r5,trap_base)
+	r5 += asl(r4, #2)
+	jumpr r5
 
 trap_base:
 	jump error_no_trap	//0
@@ -76,21 +77,21 @@ trap_base:
 	jump error_no_trap	//HVM_TRAP1_VMSETREGS		21
 	jump error_no_trap	//HVM_TRAP1_VMGETREGS		22
 
-	jump error_no_trap	//MY_TRAP1_INT_GTOGGLE		23
-	jump error_no_trap	//MY_TRAP1_INT_CFG		24
-	jump error_no_trap	//MY_TRAP1_INT_RAISE		25
-	jump error_no_trap	//MY_TRAP1_INT_ENABLE		26
-	jump error_no_trap	//MY_TRAP1_INT_DISABLE		27
-	jump error_no_trap	//MY_TRAP1_INT_DONE		28
-	jump error_no_trap	//MY_TRAP1_INT_INIT		29
-	jump error_no_trap	//MY_TRAP1_INT_SETTYPE		30
-	jump error_no_trap	//MY_TRAP1_INT_SETPOL 		31
-	
+	jump trap1_int_gtoggle	//MY_TRAP1_INT_GTOGGLE		23
+	jump trap1_int_cfg      //MY_TRAP1_INT_CFG		24
+	jump trap1_int_raise    //MY_TRAP1_INT_RAISE		25
+	jump trap1_int_enable   //MY_TRAP1_INT_ENABLE		26
+	jump trap1_int_disable  //MY_TRAP1_INT_DISABLE		27
+	jump trap1_int_done     //MY_TRAP1_INT_DONE		28
+	jump trap1_int_init     //MY_TRAP1_INT_INIT		29
+	jump trap1_int_settype  //MY_TRAP1_INT_SETTYPE		30
+	jump trap1_int_setpol   //MY_TRAP1_INT_SETPOL 		31
+	jump trap1_init         //MY_TRAP1_INIT 		32
 
 
 ENTRY(error_no_trap)
 	LOAD32(r29, DebugStack)
-	r0 = lsr(r0,#2)
+	r0 = lsr(r4,#2)
 	r1 = elr
 	call debug_trap1_out
 	jump  .
@@ -165,6 +166,60 @@ trap1_getie:
 	r0 = extractu (r1, #1, #SSR_BIT_IE)
 	jump 	return_from_trap1
 	
+
+
+///////////////////////////////////////////////////////////////////////
+trap1_int_gtoggle:
+	call 	coresys_int_gtoggle
+	jump	return_from_trap1
+
+trap1_int_cfg:
+	call 	coresys_int_cfg
+	jump	return_from_trap1
+
+trap1_int_raise:
+	call 	coresys_int_raise
+	jump	return_from_trap1
+
+trap1_int_enable:
+	call 	coresys_int_enable
+	jump	return_from_trap1
+
+trap1_int_disable:
+	call 	coresys_int_disable
+	jump	return_from_trap1
+
+trap1_int_done:
+	call 	coresys_int_done
+	jump	return_from_trap1
+
+trap1_int_init:
+	call 	coresys_int_init
+	jump	return_from_trap1
+
+trap1_int_settype:
+	call 	coresys_int_settype
+	jump	return_from_trap1
+
+trap1_int_setpol:
+	call 	coresys_int_setpol
+	jump	return_from_trap1
+
+
+///////////////////////////////////////////////////////////////////////
+// do coresys initilization
+// Supervisor mode -> User mode transfer
+//
+trap1_init:
+	call coresys_init
+
+	// change mode to USER
+	r1 = ssr
+	r1 = setbit(r1, #SSR_BIT_USR)
+	ssr = r1	
+
+	crswap (r10, sgp)
+	rte
 
 
 ///////////////////////////////////////////////////////////////////////
