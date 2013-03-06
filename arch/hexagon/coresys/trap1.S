@@ -38,6 +38,7 @@ ENTRY(exc_trap1)
 	r4 = p3:0
         memw(r10 + #_RFLAGS) = r4; 
         memw(r10 + #_R31) = r31; 	// L1
+	memd(r10 + #_R0504) = r5:4;
 	
 
 	r5 = ssr;
@@ -233,6 +234,8 @@ trap1_rte_non_user_mode:
 	//Restore r0,r10,flags
 	r0 = memw(r10 + #_RFLAGS);
 	p3:0 = r0
+	//R5:4 was clobbered by trap1 entry
+	r5:4 = memd(r10 + #_R0504);
 	r3:2 = memd(r10 + #_R0302);
 	r1:0 = memd(r10 + #_R0100);
 	crswap (r10, sgp)
