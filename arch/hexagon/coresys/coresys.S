@@ -627,8 +627,6 @@ exc_tlb_miss_common:
     r5 = extractu (r1, #10, #22)    // L1: r5 = index in L1 page table table
     r3 = addasl (r3, r5, #2)        
 
-    p0 = cmp.eq(r6,#1)
-
     r3 = memw (r3)                  // r3 = entry from L1 table
 
     r5 = extractu (r3, #3, #0)      // get type from L1 entry  
@@ -660,13 +658,13 @@ exc_tlb_miss_common:
     tlbidx = r2
     tlbw
     isync
-    TLB_LOCK_RELEASE r8, r9
 
     r7 = extractu (r1, #10, #12)    // L2 index
     LOAD32(r4, L2FETCH_ADDRESS)
     r3 = addasl (r4, r7, #2)
     r3 = memw (r3)                  // r3 = entry from L2 table
 
+    TLB_LOCK_RELEASE r8, r9
 // Check bit field layout here
 #if __HVM_PTE_W_BIT != __HVM_PTE_R_BIT + 1
 #error Wrong bit definitions W
