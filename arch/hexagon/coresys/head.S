@@ -149,6 +149,19 @@ ENTRY(stext)
      l2kill
      isync     
 
+#ifdef CONFIG_HEXAGON_ARCH_V3
+//TODO: this is pretty touchpad specific. Other devices may not have the PLL
+//configured to usable values. Even on touchpad this is a high clock 
+//rate which may not work without voltage scaling
+     LOAD32(r0,0x2800001C)
+     r1 = memw(r0)
+     r1 = clrbit(r1,#6)
+     r1 = clrbit(r1,#5)
+     r1 = clrbit(r1,#4)
+     r1 = setbit(r1,#3)
+     memw(r0) = r1
+#endif
+
 //////
 
 
