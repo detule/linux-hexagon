@@ -38,7 +38,7 @@
 #define BASE_IPI_IRQ 26
 
 
-extern void coresys_int_raise(int intr);
+extern void __my_int_raise(int intr);
 
 
 /*
@@ -106,6 +106,7 @@ irqreturn_t handle_ipi(int irq, void *desc)
 	int cpu = smp_processor_id();
 	struct ipi_data *ipi = &per_cpu(ipi_data, cpu);
 	unsigned long ops;
+//	printk("Got ipi\n");
 
 	while ((ops = xchg(&ipi->bits, 0)) != 0)
 		__handle_ipi(&ops, ipi, cpu);
@@ -127,7 +128,8 @@ void send_ipi(const struct cpumask *cpumask, enum ipi_message_type msg)
 		/*  Possible barrier here  */
 		
 #if 1
-		coresys_int_raise(BASE_IPI_IRQ + cpu);
+//		printk("Send ipi %d\n", cpu);
+		__my_int_raise(BASE_IPI_IRQ + cpu);
 		(void)retval;
 #else
 		retval = __vmintop_post(BASE_IPI_IRQ + cpu);

@@ -191,6 +191,7 @@ ENTRY(coresys_init)
     // SSR[EXC] = 1 SSR[USR] = 1
     //
     r1 = ssr
+    r1 = clrbit(r1, #19)
     r1 = clrbit(r1, #SSR_BIT_IE)
     r1 = setbit(r1, #SSR_BIT_USR)
     r1 = setbit(r1, #SSR_BIT_EXC)
@@ -277,7 +278,9 @@ ENTRY(coresys_newmap)
 
     r2 = #TLBUSG_L1FETCH
     r2 = add (r2, r3) 		// r2 = TLBUSG_L1FETCH + TID
+    TLB_LOCK_ACQUIRE r4, r5, p0
     TLB_ENTRY_SET r2, r1, r0 // idx, lo, hi
+    TLB_LOCK_RELEASE r4, r5
 
 
     jumpr r31
@@ -589,9 +592,6 @@ exc_tlbmiss_RW:
 // r1 is fault address
 //
 exc_tlb_miss_common:
-	r8 = elr
-
-
 // Process statistic
 //
     LOAD32(r3, tlb_miss_count)
@@ -654,11 +654,13 @@ exc_tlb_miss_common:
     LOAD32(r3, L2FETCH_TLB_HI)
     r2 = #TLBUSG_L2FETCH
 
+    TLB_LOCK_ACQUIRE r8, r9, p0
     tlbhi = r3
     tlblo = r4
     tlbidx = r2
     tlbw
     isync
+    TLB_LOCK_RELEASE r8, r9
 
     r7 = extractu (r1, #10, #12)    // L2 index
     LOAD32(r4, L2FETCH_ADDRESS)
@@ -719,15 +721,16 @@ exc_tlb_miss_process:
 // Update TLB counter
 //  
     LOAD32(r7, tlb_last_index)
-    r2 = memw(r7)
+update_counter:
+    r2 = memw_locked(r7)
 
     {
         p0 = cmp.ge (r2, #TLBUSG_REPLACE_MAX)    // MAX
         if !p0.new r2 = add (r2, #1)
         if (p0.new) r2 = #TLBUSG_REPLACE_MIN    // MIN
     }
-    memw(r7) = r2
-
+    memw_locked(r7,p0) = r2
+    if(!p0) jump update_counter
 
 // Make address mask:
 // 0xFFFFFFFF << (12 + 2 * HWVal)
@@ -776,12 +779,13 @@ exc_tlb_miss_process:
 // Put size field (it is same between HVM and HW)
     r1 = insert (r5, #3, #TLB_LO_BIT_SIZE)
 
+    TLB_LOCK_ACQUIRE r8, r9, p0
     tlbhi = r4      // VA
     tlblo = r1      // PA
     tlbidx = r2
     tlbw
     isync        
-
+    TLB_LOCK_RELEASE r8, r9
 
 // return code
 //

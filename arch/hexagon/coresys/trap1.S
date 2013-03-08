@@ -152,7 +152,11 @@ trap1_setvec:
 
 //////////////////////////////////
 trap1_wait:
-	wait(r0)
+	//this doesn't seem to work
+	//interrupts probably have to be enabled by dropping SSR[EXC]
+	//exc_interrupt must be short circuited somehow first
+//        r0 = #0
+//	wait(r0)
 	jump 	return_from_trap1
 
 //////////////////////////////////

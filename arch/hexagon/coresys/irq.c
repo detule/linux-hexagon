@@ -24,6 +24,8 @@
 #include <linux/io.h>
 #include <linux/ioport.h>
 
+//TODO: is this the right value?
+#define BASE_IPI_IRQ 26
 
 #if 1
 #define DBG(x...) printk("[INT] "x)
@@ -182,8 +184,10 @@ void __init init_IRQ(void)
 
 	for (irq = 0; irq < HEXAGON_CPUINTS; irq++) 
 	{
-		mask_irq_num(irq);         	
-		__my_int_cfg(irq, 0x3F);
+		if(irq >= BASE_IPI_IRQ && irq < BASE_IPI_IRQ + CONFIG_NR_CPUS)
+			__my_int_cfg(irq, 1 << (irq - BASE_IPI_IRQ)); 
+		else 	
+			__my_int_cfg(irq, 0x1); //0x3f, TODO: ints serviced by cpu0 only for now
 
 		irq_set_chip_and_handler(irq, &qdsp6_irq_chip, handle_fasteoi_irq);
 //		irq_set_chip_and_handler(irq, &qdsp6_irq_chip, handle_level_irq);
