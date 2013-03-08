@@ -25,6 +25,13 @@
         reg.h = #HI(value);    \
         reg.l = #LO(value)
 
+//
+    .macro GET_TID reg
+	\reg = ssr
+// Thread ID [0..5]
+    	\reg = extractu (\reg, #3, #19)
+    .endm
+
 	.section	".coresys", "ax"
 
 
@@ -69,9 +76,9 @@ trap_base:
 	jump error_no_trap	//HVM_TRAP1_VMCACHE		13      No usage
 	jump trap1_gettime	//HVM_TRAP1_VMGETTIME		14      IMP
 	jump error_no_trap	//HVM_TRAP1_VMSETTIME		15	NOT USED
-	jump error_no_trap	//HVM_TRAP1_VMWAIT		16
+	jump trap1_wait		//HVM_TRAP1_VMWAIT		16
 	jump error_no_trap	//HVM_TRAP1_VMYIELD		17
-	jump error_no_trap	//HVM_TRAP1_VMSTART		18
+	jump trap1_start	//HVM_TRAP1_VMSTART		18
 	jump error_no_trap	//HVM_TRAP1_VMSTOP		19
 	jump error_no_trap	//HVM_TRAP1_VMVPID		20      NOT USED
 	jump trap1_setregs	//HVM_TRAP1_VMSETREGS		21
@@ -142,6 +149,35 @@ trap1_setvec:
 	LOAD32(r1, coresys_gevb)
 	memw(r1) = r0
 	jump 	return_from_trap1
+
+//////////////////////////////////
+trap1_wait:
+	wait(r0)
+	jump 	return_from_trap1
+
+//////////////////////////////////
+trap1_start:
+	//r0 = starting address
+	//r1 = stack pointer
+	LOAD32(r2, thread_start)
+	memw(r2) = r0
+	LOAD32(r2, thread_stack)
+	memw(r2) = r1
+
+	//The new thread inherits the creators l1 table
+	GET_TID	r2
+        LOAD32(r1, L1PageTables);
+    	r1 += asl(r2, #2)
+   	r1 = memw (r1)
+	LOAD32(r2, thread_map)
+	memw(r2) = r1
+
+
+	r2 = #1
+	//TODO: replace #1 with core to start
+	r2 = asl(r2,#1)
+	start(r2)
+	jump	return_from_trap1
 
 
 ///////////////////////////////////////////////////////////////////////

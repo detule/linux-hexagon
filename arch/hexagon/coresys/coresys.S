@@ -126,6 +126,14 @@ tlb_debug_log:  	.word   0
 .global last_exc_ssr
 last_exc_ssr:  		.word   0
 
+.global thread_start   
+thread_start:		.word 	0
+
+.global thread_stack   
+thread_stack:		.word 	0
+
+.global thread_map   
+thread_map:		.word 	0
 
 ///////////////////////////////////////////////////////////////////////
 //    S W    M M U     & &    E X C E P T I O N S 
@@ -253,10 +261,10 @@ ENTRY(coresys_newmap)
 
 // update TLB mapping for L1
 //
-    r3 = asl (r3, #12)		// r3 = TID * 0x1000 = offset 
+    r4 = asl (r3, #12)		// r3 = TID * 0x1000 = offset 
 
     LOAD32(r1, TLB_MAKE_LO(0, TLB_SIZE_4K, TLB_L1WB_L2C, TLB_R)) // PA
-    r0 += asl (r3, #12)		// r0 = physic L1 address + TID * 0x1000
+//  r0 += asl (r4, #12)		// r0 = physic L1 address + TID * 0x1000 //Don't drust the caller?
     r1 |= lsr (r0, #12)         // to TLB format
     // r1 - PA LO TLB entry
 
@@ -411,7 +419,6 @@ exc_test:
 // called when HW thread core started by start (r0) command
 //
 exc_reset:
-
     GET_TID r6
 
 // Setup SGP value
@@ -422,13 +429,28 @@ exc_reset:
     LOAD32(r5, SuperWorldData)
     r5 = add (r5, r4)
     sgp = r5    
+  
+    LOAD32(r0,thread_stack)
+    r29 = memw(r0)
+    LOAD32(r0,thread_start)
+    r0 = memw(r0)
 
-	r5 = #0
-	chicken = r5; // who stole egg? :O     
+    elr = r0
+  
+    LOAD32(r0,thread_map)
+    r0 = memw(r0)
 
-//    call    thread_start
-    jump    .
+    call coresys_newmap
 
+    r0 = ssr
+    r0 = clrbit(r0, #SSR_BIT_USR)
+    r0 = clrbit(r0, #SSR_BIT_IE)
+    r0 = setbit(r0, #SSR_BIT_EXC)
+    r0 = insert(r6, #5, #SSR_BIT_ASID_TID)
+    ssr = r0
+    isync
+
+    rte
 
 
 #if 0
@@ -604,6 +626,8 @@ exc_tlb_miss_common:
 
     r5 = extractu (r1, #10, #22)    // L1: r5 = index in L1 page table table
     r3 = addasl (r3, r5, #2)        
+
+    p0 = cmp.eq(r6,#1)
 
     r3 = memw (r3)                  // r3 = entry from L1 table
 

@@ -22,6 +22,7 @@
 
 // we hold linux kernel/user mode flag as bit0 in ASID
 #define SSR_BIT_ASID_USR 8
+#define SSR_BIT_ASID_TID 9
 
 // SYSCFG defines
 //

@@ -65,7 +65,7 @@ ENTRY(__vmgettime)
 	jumpr	R31;
 
 ENTRY(__vmwait)
-//	trap1(#HVM_TRAP1_VMWAIT);
+	trap1(#HVM_TRAP1_VMWAIT);
 	jumpr	R31;
 
 ENTRY(__vmyield)
@@ -73,7 +73,7 @@ ENTRY(__vmyield)
 	jumpr	R31;
 
 ENTRY(__vmstart)
-//	trap1(#HVM_TRAP1_VMSTART);
+	trap1(#HVM_TRAP1_VMSTART);
 	jumpr	R31;
 
 ENTRY(__vmstop)
