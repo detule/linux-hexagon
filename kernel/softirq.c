@@ -158,6 +158,9 @@ EXPORT_SYMBOL(_local_bh_enable);
 static inline void _local_bh_enable_ip(unsigned long ip)
 {
 	WARN_ON_ONCE(in_irq() || irqs_disabled());
+	if (in_irq() || irqs_disabled())
+		printk("in_irq()%d  irqs_disabled()%d\n", in_irq(), irqs_disabled());
+
 #ifdef CONFIG_TRACE_IRQFLAGS
 	local_irq_disable();
 #endif

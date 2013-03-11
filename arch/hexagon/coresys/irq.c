@@ -23,9 +23,18 @@
 #include <linux/irq.h>
 #include <linux/io.h>
 #include <linux/ioport.h>
+#include <asm/irq.h>
 
-//TODO: is this the right value?
-#define BASE_IPI_IRQ 26
+
+#ifdef CONFIG_HEXAGON_ARCH_V2
+   #define BASE_IPI_IRQ 	INT_Q6_IPC0
+#else
+
+   #warning todoooo
+   #define BASE_IPI_IRQ 	26
+
+#endif
+
 
 #if 1
 #define DBG(x...) printk("[INT] "x)
@@ -72,7 +81,7 @@ static void qdsp6_irq_unmask(struct irq_data *d)
 
 static void qdsp6_irq_ack(struct irq_data *d)
 {
-	if (d->irq != 3) DBG("done %d\n", d->irq);
+	if (d->irq != 3 && d->irq != 5 && d->irq != 6) DBG("done %d\n", d->irq);
 	__my_int_done(d->irq);
 }
 

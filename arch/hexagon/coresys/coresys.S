@@ -991,6 +991,26 @@ exc_int:
  	EXCEPTION_ENTER_HEAD VEC_INT;
 
 exc_trap0:
+	crswap (r10, sgp)
+        memd (r10 + #_R0100) = r1:0
+        r0 = p3:0
+
+	r1 = ssr
+	r1 = extractu(r1, #8, #SSR_BIT_CAUSE)
+	p0 = cmp.eq (r1, #0)
+	if !p0 jump exc_trap0_not_zero
+
+    	p3:0  = r0
+    	r1:0  = memd (r10 + #_R0100)
+    	crswap (r10, sgp)
+	rte
+
+
+exc_trap0_not_zero:
+    	p3:0  = r0
+    	r1:0  = memd (r10 + #_R0100)
+	crswap (r10, sgp)
+
 	EXCEPTION_ENTER_HEAD VEC_TRAP0;
 
 

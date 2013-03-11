@@ -32,10 +32,17 @@
 
 #include <asm/time.h>    /*  timer_interrupt  */
 #include <asm/hexagon_vm.h>
+#include <asm/irq.h>
 
 
-// TODO is it right value??
-#define BASE_IPI_IRQ 26
+#ifdef CONFIG_HEXAGON_ARCH_V2
+   #define BASE_IPI_IRQ 	INT_Q6_IPC0
+#else
+
+   #warning todoooo
+   #define BASE_IPI_IRQ 	26
+
+#endif
 
 
 extern void __my_int_raise(int intr);
@@ -238,7 +245,7 @@ void __init smp_prepare_cpus(unsigned int max_cpus)
 	 */
 
 // Cotulla HACK: boot with only one core
-	max_cpus = 1;
+	max_cpus = 2;
 
 	/*  Right now, let's just fake it. */
 	for (i = 0; i < max_cpus; i++)

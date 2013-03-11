@@ -33,6 +33,7 @@ without any system dependences. can be used very early during boot process.
 */
 
 extern void flush_dcache_range(unsigned long start, unsigned long end);
+void scr_fb_console_write(void *console, const char *s, unsigned int count);
 
 
 
@@ -71,10 +72,38 @@ static void ram_console_update(const char *s, unsigned int count)
 }
 
 
-__attribute__((optimize("O0"))) void ram_console_write_size(const char *s, unsigned count)
+// Include mistic zuzu logger here
+//
+#ifdef CONFIG_HEXAGON_ARCH_V2
+#include "../../../../tst/zuzulog.h"
+static char zuzubuffer[512];
+#endif
+
+
+
+
+void ram_console_write_size(const char *s, unsigned count)
 {
 	int rem;
 	struct ram_console_buffer *buffer = ram_console_buffer;
+
+
+#ifdef CONFIG_HEXAGON_ARCH_V2
+//	scr_fb_console_write(0, s, count);
+
+#if 1
+	for (rem = 0; rem < count; rem++)
+		zuzu_console_writech(s[rem]);
+#else
+
+	if (count > 511) count = 511;
+	memcpy(zuzubuffer, s, count);
+	zuzubuffer[count] = 0;
+	zuzubuffer[511] = 0;
+	zuzu_console_write(zuzubuffer);
+#endif
+
+#endif
 
 	if (count > ram_console_buffer_size) 
 	{

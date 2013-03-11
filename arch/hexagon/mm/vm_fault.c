@@ -101,7 +101,7 @@ good_area:
 	}
 
 	fault = handle_mm_fault(mm, vma, address, flags);
-	printk("handle_mm_fault %08X: A=%X VMF=%X F=%X %X\n", mm->context.ptbase, address, vma->vm_flags, flags, fault);
+	printk("handle_mm_fault CPU=%d %08X: A=%X VMF=%X F=%X %X\n", smp_processor_id(), mm->context.ptbase, address, vma->vm_flags, flags, fault);
 
 #if 0
 

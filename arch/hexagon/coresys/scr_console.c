@@ -96,6 +96,10 @@ const unsigned char *scr_fb_font_data;
 #define	scr_fb_console_rows 	(SCR_FB_LCD_HEIGHT / scr_fb_font_rows)
 
 
+// Make sure we don't init twice
+static bool scr_fb_console_init_done = false;
+
+
 /* Current position of cursor (where next character will be written) */
 unsigned int scr_fb_cur_x, scr_fb_cur_y;
 
@@ -107,7 +111,7 @@ unsigned char scr_fb_chars[SCR_FB_CON_MAX_ROWS][SCR_FB_CON_MAX_COLS];
 unsigned char scr_fb_fg[SCR_FB_CON_MAX_ROWS][SCR_FB_CON_MAX_COLS];
 unsigned char scr_fb_bg[SCR_FB_CON_MAX_ROWS][SCR_FB_CON_MAX_COLS];
 
-static void scr_fb_console_write(struct console *console, const char *s, unsigned int count);
+void scr_fb_console_write(struct console *console, const char *s, unsigned int count);
 
 
 
@@ -174,10 +178,12 @@ static void scr_fb_console_clear(void)
 
 /* Write a string to character buffer; handles word wrapping, auto-scrolling, etc
  * After that, calls scr_fb_console_update to send data to the LCD */
-static void scr_fb_console_write(struct console *console, const char *s, unsigned int count)
+void scr_fb_console_write(struct console *console, const char *s, unsigned int count)
 {
 	unsigned int i, j, k, scroll;
 	const char *p;
+
+	if (!scr_fb_console_init_done) return;
 
 //#ifndef CONFIG_SCR_FB_CONSOLE_BOOT
 #if 0
@@ -251,8 +257,6 @@ static void scr_fb_console_write(struct console *console, const char *s, unsigne
 	scr_fb_console_update();
 }
 
-// Make sure we don't init twice
-static bool scr_fb_console_init_done = false;
 
 
 int __init scr_fb_console_init(void)
@@ -265,13 +269,6 @@ int __init scr_fb_console_init(void)
 	scr_fb_console_init_done = true;
 
 
-	/* Init font (we support any font that has width <= 8; height doesn't matter) */
-//	scr_fb_default_font = get_default_font(SCR_FB_LCD_WIDTH, SCR_FB_LCD_HEIGHT, 0xFF, 0xFFFFFFFF);
-//	if (!scr_fb_default_font) 
-//	{
-//		printk(KERN_WARNING "Can't find a suitable font for scr_fb\n");
-//		return -1;
-//	}
 	scr_fb_default_font = &font_vga_8x16;
 	scr_fb_font_data = scr_fb_default_font->data;
 
@@ -284,8 +281,10 @@ int __init scr_fb_console_init(void)
 	scr_fb_console_write(&scr_fb_console, SCR_FB_MSG, strlen(SCR_FB_MSG));
 
 	/* Register console */
+#if 0
 	register_console(&scr_fb_console);
 	console_verbose();
+#endif
 
 	return 0;
 }

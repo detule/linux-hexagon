@@ -127,7 +127,8 @@ static int __init hexagon_init(void)
 	msm_device_otg.dev.platform_data = &msm_otg_pdata;
 	msm_device_gadget_peripheral.dev.platform_data = &msm_gadget_pdata;
 
-	platform_add_devices(devices, ARRAY_SIZE(devices));
+// Cotulla: disable USB temporal
+//	platform_add_devices(devices, ARRAY_SIZE(devices));
 	return 0;
 }
 

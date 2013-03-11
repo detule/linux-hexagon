@@ -112,11 +112,12 @@ void arch_do_IRQ(struct pt_regs *regs)
 	int irq = pt_cause(regs);
 	struct pt_regs *old_regs = set_irq_regs(regs);
 
-	if (irq != 3) printk("IRQ %d\n", irq);
+	if (irq != 3 && irq != 5 && irq != 6) printk("IRQ %d\n", irq);
  
 #ifdef ENABLE_DUMP_CODE_FLOW
 	kk++;
-	if (kk > 400) // 140 * 400
+//	if (kk > 400) // 140 * 400
+	if (kk > 400)
 	{
 	    printk("IRQ: ELR=%08X LR=%08X\n", (u32)pt_elr(regs), (u32)regs->r31);	
 //	    if (hsusb_base) printk("USB DATA: %08X %08X %08X\n",  hsusb_base[0x140/4], hsusb_base[0x144/4], hsusb_base[0x148/4]);

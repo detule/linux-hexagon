@@ -580,6 +580,11 @@ void do_trap0(struct pt_regs *regs)
 #endif
 		}
 		break;
+
+	
+	case 0: // ignore trap 0
+	break;
+
 	default:
 		panic("ERROR: Unrecognized trap0: C=%X SSR=%X r6=%08X LR=%08X ELR=%08X\n", 
 				pt_cause(regs),last_exc_ssr,regs->r06, regs->r31, pt_elr(regs));
