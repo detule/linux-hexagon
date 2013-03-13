@@ -561,7 +561,10 @@ exc_tlbmiss_X:
     r2 = ssr
     p0 = tstbit (r2, #0)
     if (p0) r1 = add(r1, #32)
-
+    p0 = tstbit (r2, #1)
+    if (!p0) jump 1f
+    r1 = badva
+1:
 
     // SSR[CAUSE] = 3 to report it as an execute fault
     r3 = #3
@@ -663,7 +666,7 @@ exc_tlb_miss_common:
     LOAD32(r4, L2FETCH_ADDRESS)
     r3 = addasl (r4, r7, #2)
     r3 = memw (r3)                  // r3 = entry from L2 table
-
+    isync
     TLB_LOCK_RELEASE r8, r9
 // Check bit field layout here
 #if __HVM_PTE_W_BIT != __HVM_PTE_R_BIT + 1
@@ -803,12 +806,23 @@ update_counter:
 exc_nmi:
 // path to dump current state 
 //
+    //TODO: ideally we just kill every core except the current one
+    LOAD32(r0, tlb_access_lock)
+    r1 = #1
+//    memw(r0) = r1
+    r0 = ssr
+    r0 = clrbit(r0, #SSR_BIT_EXC)
+    r0 = clrbit(r0, #SSR_BIT_IE)
+    r0 = clrbit(r0, #SSR_BIT_USR)
+    r0 = clrbit(r0, #SSR_BIT_ASID_USR)
+    ssr = r0
     LOAD32(r29, DebugStack)
     r0 = elr
     r1 = badva
     r2 = r31
-    LOAD32(r3,debug_error_out)
-    callr r3
+    GET_TID r3
+    LOAD32(r4,debug_error_out)
+    callr r4
     jump    .
 
 
