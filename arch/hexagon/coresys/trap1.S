@@ -163,24 +163,34 @@ trap1_wait:
 trap1_start:
 	//r0 = starting address
 	//r1 = stack pointer
-	LOAD32(r2, thread_start)
-	memw(r2) = r0
-	LOAD32(r2, thread_stack)
-	memw(r2) = r1
+	LOAD32(r3, thread_start)
+	memw(r3) = r0
+	LOAD32(r3, thread_stack)
+	memw(r3) = r1
+	LOAD32(r3, thread_lock)
+	r4 = #1
+	memw(r3) = r4
+        barrier
 
 	//The new thread inherits the creators l1 table
-	GET_TID	r2
+	GET_TID	r3
         LOAD32(r1, L1PageTables);
-    	r1 += asl(r2, #2)
+    	r1 += asl(r3, #2)
    	r1 = memw (r1)
-	LOAD32(r2, thread_map)
-	memw(r2) = r1
+	LOAD32(r3, thread_map)
+	memw(r3) = r1
 
-
-	r2 = #1
-	//TODO: replace #1 with core to start
-	r2 = asl(r2,#1)
+	r3 = #1
+	r2 = asl(r3,r2)
 	start(r2)
+
+	LOAD32(r2, thread_lock)
+1:      r1 = memw(r2)
+        p0 = cmp.eq(r1,#0)
+	if (p0) jump 1f
+	jump 1b
+1:
+
 	jump	return_from_trap1
 
 

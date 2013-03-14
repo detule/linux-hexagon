@@ -72,7 +72,7 @@ long __vmclrmap(void *, unsigned long);
 long __vmnewmap(void *);
 long __vmcache(enum VM_CACHE_OPS op, unsigned long addr, unsigned long len);
 unsigned long long __vmgettime(void);
-long __vmstart(void *, void *);
+long __vmstart(void *, void *, int);
 void __vmstop(void);
 long __vmwait(void);
 void __vmyield(void);

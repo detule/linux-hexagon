@@ -223,8 +223,7 @@ int __cpuinit __cpu_up(unsigned int cpu, struct task_struct *idle)
 
 	/*  Boot to the head.  */
 	stack_start =  ((void *) thread) + THREAD_SIZE;
-	__vmstart(start_secondary, stack_start);
-
+	__vmstart(start_secondary, stack_start, cpu);
 	while (!cpu_online(cpu))
 		barrier();
 

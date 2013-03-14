@@ -36,7 +36,7 @@
 #endif
 
 
-#if 1
+#if 0
 #define DBG(x...) printk("[INT] "x)
 #else
 #define DBG(x...) do{}while(0)
@@ -196,7 +196,7 @@ void __init init_IRQ(void)
 		if(irq >= BASE_IPI_IRQ && irq < BASE_IPI_IRQ + CONFIG_NR_CPUS)
 			__my_int_cfg(irq, 1 << (irq - BASE_IPI_IRQ)); 
 		else 	
-			__my_int_cfg(irq, 0x1); //0x3f, TODO: ints serviced by cpu0 only for now
+			__my_int_cfg(irq, 0x3f);//TODO: ints serviced by cpu0 only for now
 
 		irq_set_chip_and_handler(irq, &qdsp6_irq_chip, handle_fasteoi_irq);
 //		irq_set_chip_and_handler(irq, &qdsp6_irq_chip, handle_level_irq);

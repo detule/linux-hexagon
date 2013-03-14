@@ -197,6 +197,9 @@ thread_stack:		.word 	0
 .global thread_map   
 thread_map:		.word 	0
 
+.global thread_lock
+thread_lock:		.word 	0
+
 ///////////////////////////////////////////////////////////////////////
 //    S W    M M U     & &    E X C E P T I O N S 
 ///////////////////////////////////////////////////////////////////////
@@ -506,6 +509,10 @@ exc_reset:
     r0 = memw(r0)
 
     call coresys_newmap
+
+    LOAD32(r0,thread_lock)
+    r1 = #0
+    memw(r0) = r1
 
     r0 = ssr
     r0 = setbit(r0, #22)
