@@ -106,7 +106,7 @@ void debug_dump_tlb_all(void)
 		: "=r" (lo), "=r" (hi)
 		: "r" (i)
 	);
-	if (lo != 0 && hi != 0) my_out("TLB %02d values: LO_PA=%08X HI_VA=%08X\n", i, lo, hi);
+	my_out("TLB %02d values: LO_PA=%08X HI_VA=%08X\n", i, lo, hi);
 	}
 }
 
@@ -148,14 +148,13 @@ void debug_tlb_last(void)
 	}
 }
 
-
-void debug_error_out(uint32_t elr, uint32_t badva, uint32_t lr)
+extern int tlb_last_index;
+void debug_error_out(uint32_t elr, uint32_t badva, uint32_t lr, uint32_t tid)
 {
-	my_out("ERROR: %d SSR=%X ELR=%08X ADDR=%08X LR=%08X\r\n", get_miss_count(), get_ssr(), elr, badva, lr);	
-	my_out("swapper entry %08X\n", swapper_pg_dir[badva >> 22]);
-
-	debug_dump_tlb(TLBUSG_L1FETCH);
-	debug_dump_tlb(TLBUSG_L2FETCH);
+	my_out("ERROR: %d SSR=%X ELR=%08X ADDR=%08X LR=%08X TID=%d\r\n", get_miss_count(), get_ssr(), elr, badva, lr, tid);	
+	my_out("l1 entry %08X\n", ((u32*)(0xF0000000 + tid * 0x1000))[badva >> 22]);
+	my_out("tlb last idx: %d\n", tlb_last_index);
+	debug_dump_tlb_all();
 	
 	sprint_symbol(symBuf1, elr);
 	sprint_symbol(symBuf2, lr);

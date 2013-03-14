@@ -39,6 +39,17 @@
         reg.l = #LO(value)
 
 
+#define SSR_LOG_IDX 0xF8040000
+#define SSR_LOG 0xF8040020
+#define DEBUG 0
+
+#if DEBUG
+    #define SSR_LOG_UPDATE(x) SSR_LOG_UPDATE_S x
+    #define SSR_LOG_UPDATE_INT(x) SSR_LOG_UPDATE_INT_S x
+#else
+    #define SSR_LOG_UPDATE(x)
+    #define SSR_LOG_UPDATE_INT(x)
+#endif
 
 
     .macro TLB_ENTRY_SET index, regl, regh
@@ -87,8 +98,57 @@
     	\reg = extractu (\reg, #3, #19)
     .endm
 
+    .macro SSR_LOG_UPDATE_INT_S type
+    LOAD32(r1,SSR_LOG_IDX)
+11:
+    r2 = memw_locked(r1)
+    p0 = cmp.ge(r2,#63)
+    r2 = add(r2,#1)
+    if !p0 jump 22f
+	r2 = #0
+22:
+    memw_locked(r1,p0) = r2
+    if !p0 jump 11b
 
+    LOAD32(r1,SSR_LOG)
 
+    r2 = asl(r2,#5) //8 * dword
+    r1 = add(r1,r2)
+    
+    r3 = ssr
+    memw(r1) = r3
+    r1 = add(r1, #4)
+
+    GET_TID r3
+    memw(r1) = r3
+    r1 = add(r1, #4)
+
+    r3 = elr
+    memw(r1) = r3
+    r1 = add(r1, #4)
+
+    r3 = badva
+    memw(r1) = r3
+    r1 = add(r1, #4)
+
+    r3 = #\type
+    memw(r1) = r3
+    .endm
+
+    .macro SSR_LOG_UPDATE_S type
+    crswap(r10, sgp)
+    { r0 = p3:0;
+      memd(r10 + #_R0100)=r1:0; }
+    memd(r10 + #_R0302)=r3:2;
+
+    SSR_LOG_UPDATE_INT_S \type
+
+    r3:2 = memd(r10 + #_R0302)
+    p3:0 = r0
+    r1:0 = memd(r10 + #_R0100)
+    crswap(r10, sgp)
+   .endm
+ 
 
 #define HW_THREADS          6
 #define L1_PAGETABLE_SIZE   4096
@@ -119,6 +179,8 @@ tlb_last_index: 	.word   TLBUSG_REPLACE_MIN
 tlb_access_lock:	.word   0
 
 tlb_miss_count: 	.word   0
+
+nmi_lock:		.word 	0
 
 .global tlb_debug_log
 tlb_debug_log:  	.word   0
@@ -446,6 +508,8 @@ exc_reset:
     call coresys_newmap
 
     r0 = ssr
+    r0 = setbit(r0, #22)
+    r0 = setbit(r0, #23)
     r0 = clrbit(r0, #SSR_BIT_USR)
     r0 = clrbit(r0, #SSR_BIT_IE)
     r0 = setbit(r0, #SSR_BIT_EXC)
@@ -461,7 +525,7 @@ exc_reset:
 // ASIDs not supported
 
 exc_tlbmiss_X:
-
+   SSR_LOG_UPDATE 1
 // save registers
 // p0-p3, r0-r3
 //
@@ -475,10 +539,18 @@ exc_tlbmiss_X:
     memd (r10 + #_R0706) = r7:6
     memd (r10 + #_R0908) = r9:8
 
-
+    r1 = elr
+    r2 = ssr
+    p0 = tstbit(r2,#1)
+    if(!p0) jump 1f
+    r1 = #3
+    r2 = insert(r1,#8,#0)
+    ssr = r2
+    r1 = badva
+    jump exc_tlb_miss_common
+1:
     //Rewrite the ssr cause field to store that this was an execute fault
     r2 = ssr
-    r6 = r2 // <<<<
     r1 = #3
     r2 = insert(r1,#8,#0)
     ssr = r2
@@ -500,31 +572,14 @@ exc_tlbmiss_X:
     //Check this by seeing if tlbp picks up anything
     r2 = elr
 
-
-// Cotulla test:
-#if 0
-// Hack to load TLB entries for qImage
-    LOAD32(r1, TLB_MAKE_LO(TLB_ADDR(PHYS_OFFSET), TLB_SIZE_16M, TLB_L1WB_L2C, TLB_RWX))
-    LOAD32(r2, TLB_MAKE_HI(TLB_ADDR(PAGE_OFFSET), 1, 0)) // global
-    r0 = #TLBUSG_REPLACE_MIN
-    TLB_ENTRY_SET r0, r1, r2 // idx, lo, hi
-
-    r0 = elr
-//    r1 = badva
-    r1 = r6
-    r2 = r31
-    LOAD32(r29, DebugStack)
-    LOAD32(r3, debug_error_out)
-    callr r3
-    jump    .
-#endif
-
-
     // Make TLB HI entry
-    //TODO: add ASID
+    r3 = ssr
+    r3 = extractu(r3,#6,#8) //ASID
     r2 = lsr (r2, #12)          // >> 12
+    r2 = insert(r3,#6,#20)
     tlbhi = r2
     tlbp
+    isync
     r3 = tlbidx
     //Tlbp will set the high bit if there is currently no entry
     //TODO: even if we get a valid index, we must check that that TLB_LO
@@ -543,7 +598,8 @@ exc_tlbmiss_X:
 #else
 // new, more easy way
 
-exc_tlbmiss_X:    
+exc_tlbmiss_X:  
+   SSR_LOG_UPDATE(1)  
 // save registers
 // p0-p3, r0-r3
 //
@@ -578,6 +634,7 @@ exc_tlbmiss_X:
 
 
 exc_tlbmiss_RW:
+    SSR_LOG_UPDATE(2)
     crswap (r10, sgp)
     { 
         r0 = p3:0         
@@ -666,7 +723,6 @@ exc_tlb_miss_common:
     LOAD32(r4, L2FETCH_ADDRESS)
     r3 = addasl (r4, r7, #2)
     r3 = memw (r3)                  // r3 = entry from L2 table
-    isync
     TLB_LOCK_RELEASE r8, r9
 // Check bit field layout here
 #if __HVM_PTE_W_BIT != __HVM_PTE_R_BIT + 1
@@ -782,11 +838,25 @@ update_counter:
 
     TLB_LOCK_ACQUIRE r8, r9, p0
     tlbhi = r4      // VA
+
+//This probe is horrible. but on SMP it appears that the other processor 
+//can cause spurious faults even though the TLB is present, or at 
+//least cause imprecise faults to fail. Whatever the cause, inserting
+//a duplicate is sure to cause an NMI
+    tlbp
+    r3 = tlbidx
+    p0 = tstbit(r3, #31)
+    if p0 jump 1f
+	jump 2f
+1:
     tlblo = r1      // PA
     tlbidx = r2
     tlbw
-    isync        
+    isync  
+2:      
     TLB_LOCK_RELEASE r8, r9
+
+    SSR_LOG_UPDATE_INT(8)
 
 // return code
 //
@@ -806,10 +876,24 @@ update_counter:
 exc_nmi:
 // path to dump current state 
 //
-    //TODO: ideally we just kill every core except the current one
-    LOAD32(r0, tlb_access_lock)
+SSR_LOG_UPDATE_INT(7)
+    //All threads simultanously NMI
+    //We really only want to print debug output from
+    //one, so we race for the lock here. 
+    LOAD32(r0, nmi_lock)
+1:
+    r1 = memw_locked(r0)
+    p0 = cmp.ge(r1,#1)
+    if( p0 ) jump 1b
     r1 = #1
-//    memw(r0) = r1
+    memw_locked(r0, p0) = r1
+    if( !p0 ) jump 1b
+
+    isync
+    //Clear the lock
+    LOAD32(r0, tlb_access_lock)
+    r1 = #0
+    memw(r0) = r1
     r0 = ssr
     r0 = clrbit(r0, #SSR_BIT_EXC)
     r0 = clrbit(r0, #SSR_BIT_IE)
@@ -832,6 +916,7 @@ exc_nmi:
 // called if TLB present but protection error
 //
 exc_error2:
+    SSR_LOG_UPDATE(3)
 #if 0
 // fatal error path
 //
@@ -999,12 +1084,15 @@ exc_tlb_miss_invalid:
 
 
 exc_fault:
+        SSR_LOG_UPDATE(4)
  	EXCEPTION_ENTER_HEAD VEC_FAULT;
 
 exc_int:
+	SSR_LOG_UPDATE(5)
  	EXCEPTION_ENTER_HEAD VEC_INT;
 
 exc_trap0:
+        SSR_LOG_UPDATE(6)
 	crswap (r10, sgp)
         memd (r10 + #_R0100) = r1:0
         r0 = p3:0
@@ -1029,6 +1117,12 @@ exc_trap0_not_zero:
 
 
 ENTRY(int_debug)
+    r0 = ssr
+    r0 = clrbit(r0, #SSR_BIT_EXC)
+    r0 = clrbit(r0, #SSR_BIT_IE)
+    r0 = clrbit(r0, #SSR_BIT_USR)
+    r0 = clrbit(r0, #SSR_BIT_ASID_USR)
+    ssr = r0
     LOAD32(r29, DebugStack)
     LOAD32(r3,debug_intr_out)
     callr r3
